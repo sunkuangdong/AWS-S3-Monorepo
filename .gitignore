@@ -1,0 +1,53 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Redis and RedisInsight persistent data
+volumes/
+data/
+dump.rdb
+appendonly.aof
+appendonlydir/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache and tooling
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+
+# Node.js dependencies, caches, and build output
+node_modules/
+.pnpm-store/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.bundle
+
+# Editors
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+.pnpm-store/

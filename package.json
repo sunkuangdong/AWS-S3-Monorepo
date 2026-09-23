@@ -1,0 +1,14 @@
+{
+  "name": "ai-image-platform",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ai-image/web dev",
+    "build": "pnpm --filter @ai-image/web build",
+    "lint": "pnpm --filter @ai-image/web lint"
+  }
+}
