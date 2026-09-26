@@ -19,6 +19,7 @@
 
 /*
  * 让所有元素的宽度计算包含 padding 和 border。
+ * Include padding and borders in every element's calculated dimensions.
  */
 *,
 *::before,

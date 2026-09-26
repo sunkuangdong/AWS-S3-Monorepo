@@ -22,8 +22,10 @@ import './App.css'
 
 /**
  * 前端允许用户选择的图片类型。
+ * Image types that users may select in the frontend.
  *
  * 这里必须与 FastAPI 后端允许的类型保持一致。
+ * This list must match the types accepted by FastAPI.
  */
 const supportedImageTypes: ImageContentType[] = [
   'image/jpeg',
@@ -33,9 +35,12 @@ const supportedImageTypes: ImageContentType[] = [
 
 /**
  * 检查浏览器提供的文件类型是否受支持。
+ * Check whether the browser-provided file type is supported.
  *
  * `type is ImageContentType` 是 TypeScript 类型守卫。
  * 验证成功后，TypeScript 会把 type 当作 ImageContentType。
+ * `type is ImageContentType` is a TypeScript type guard. After a
+ * successful check, TypeScript treats type as ImageContentType.
  */
 function isSupportedImageType(
   type: string,
@@ -48,18 +53,21 @@ function isSupportedImageType(
 function App() {
   /**
    * 用户当前选择的本地图片文件。
+   * Local image file currently selected by the user.
    */
   const [selectedFile, setSelectedFile] =
     useState<File | null>(null)
 
   /**
    * 本地图片的临时预览地址。
+   * Temporary browser URL used to preview the local image.
    */
   const [previewUrl, setPreviewUrl] =
     useState<string | null>(null)
 
   /**
    * 用户发送给 OpenAI 的提示词。
+   * Prompt that the user sends to OpenAI.
    */
   const [prompt, setPrompt] = useState(
     '请详细描述这张图片的内容。',
@@ -67,40 +75,49 @@ function App() {
 
   /**
    * FastAPI 返回的图片分析结果。
+   * Image analysis result returned by FastAPI.
    */
   const [result, setResult] =
     useState<AnalyzeImageResponse | null>(null)
 
   /**
    * 当前处理进度。
+   * Current processing status.
    */
   const [statusMessage, setStatusMessage] =
     useState('')
 
   /**
    * 发生错误时显示的信息。
+   * Message displayed when an error occurs.
    */
   const [errorMessage, setErrorMessage] =
     useState('')
 
   /**
    * 表示当前是否正在上传或分析。
+   * Indicate whether an upload or analysis is in progress.
    *
    * 处理期间禁用表单，避免用户重复提交。
+   * Disable the form during processing to prevent duplicate submissions.
    */
   const [isProcessing, setIsProcessing] =
     useState(false)
 
   /**
    * 保存当前预览地址。
+   * Store the current preview URL.
    *
    * URL.createObjectURL() 创建的地址会占用浏览器内存，
    * 因此不再使用时需要调用 URL.revokeObjectURL()。
+   * URLs created by URL.createObjectURL() consume browser resources,
+   * so URL.revokeObjectURL() releases them when they are no longer used.
    */
   const previewUrlRef = useRef<string | null>(null)
 
   /**
    * 组件从页面移除时，释放最后一个图片预览地址。
+   * Release the last preview URL when the component unmounts.
    */
   useEffect(() => {
     return () => {
@@ -114,6 +131,7 @@ function App() {
 
   /**
    * 用户选择图片时执行。
+   * Run when the user selects an image.
    */
   function handleFileChange(
     event: ChangeEvent<HTMLInputElement>,
@@ -122,6 +140,7 @@ function App() {
 
     /**
      * 清除上一次的分析结果和错误。
+     * Clear the previous analysis result and error.
      */
     setResult(null)
     setErrorMessage('')
@@ -129,6 +148,7 @@ function App() {
 
     /**
      * 释放之前创建的本地预览地址。
+     * Release the previously created local preview URL.
      */
     if (previewUrlRef.current) {
       URL.revokeObjectURL(
@@ -152,8 +172,10 @@ function App() {
 
       /**
        * 清空文件输入框。
+       * Clear the file input.
        *
        * 这样用户可以重新选择文件。
+       * This lets the user select a file again.
        */
       event.target.value = ''
       return
@@ -162,6 +184,8 @@ function App() {
     /**
      * 为本地 File 创建浏览器临时地址，
      * 让图片还没有上传时就可以预览。
+     * Create a temporary browser URL for the local File so the image
+     * can be previewed before upload.
      */
     const objectUrl = URL.createObjectURL(file)
 
@@ -172,6 +196,7 @@ function App() {
 
   /**
    * 用户提交表单时执行完整处理流程。
+   * Run the complete workflow when the user submits the form.
    */
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -205,6 +230,7 @@ function App() {
     try {
       /**
        * 第一步：向 FastAPI 申请 S3 上传凭证。
+       * Step 1: Request S3 upload credentials from FastAPI.
        */
       setStatusMessage('正在申请上传凭证……')
 
@@ -215,6 +241,7 @@ function App() {
 
       /**
        * 第二步：浏览器把图片直接上传到 S3。
+       * Step 2: Upload the image directly from the browser to S3.
        */
       setStatusMessage('正在上传图片……')
 
@@ -225,9 +252,12 @@ function App() {
 
       /**
        * 第三步：把 object_key 发送给 FastAPI。
+       * Step 3: Send the object key to FastAPI.
        *
        * FastAPI 会生成临时读取地址，
        * 然后调用 OpenAI 分析图片。
+       * FastAPI creates a temporary read URL and asks OpenAI
+       * to analyze the image.
        */
       setStatusMessage('OpenAI 正在分析图片……')
 
@@ -242,6 +272,8 @@ function App() {
       /**
        * JavaScript 的 catch 变量可能不是 Error 对象，
        * 因此需要先判断类型。
+       * A JavaScript catch value is not guaranteed to be an Error,
+       * so check its type first.
        */
       if (error instanceof Error) {
         setErrorMessage(error.message)
@@ -255,6 +287,7 @@ function App() {
     } finally {
       /**
        * 无论成功还是失败，都恢复按钮状态。
+       * Restore the button state after either success or failure.
        */
       setIsProcessing(false)
     }

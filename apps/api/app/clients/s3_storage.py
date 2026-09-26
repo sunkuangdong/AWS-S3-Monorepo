@@ -2,7 +2,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import boto3
-
 from botocore.exceptions import (
     BotoCoreError,
     ClientError,
@@ -22,23 +21,30 @@ SUPPORTED_IMAGE_TYPES: dict[str, str] = {
 class S3StorageClient:
     """
     封装项目中所有 Amazon S3 操作。
+    Encapsulate all Amazon S3 operations used by the application.
 
     其他模块不直接调用 boto3，而是通过这个类访问 S3。
+    Other modules access S3 through this class instead of calling boto3 directly.
     """
 
     def __init__(self, settings: Settings) -> None:
         """
         创建 S3StorageClient。
+        Create an S3StorageClient.
 
-        参数:
+        参数 / Args:
             settings: 项目配置对象，包含区域、Bucket 和上传限制。
+                      Application settings containing the region, bucket,
+                      and upload limits.
         """
 
         self.settings = settings
 
-        # 创建 boto3 的 S3 客户端。
+        # 创建 boto3 S3 客户端。
+        # Create the boto3 S3 client.
         #
-        # boto3 会自动从环境变量读取：
+        # boto3 会自动从以下环境变量读取凭证：
+        # boto3 automatically reads credentials from:
         # AWS_ACCESS_KEY_ID
         # AWS_SECRET_ACCESS_KEY
 
@@ -54,13 +60,17 @@ class S3StorageClient:
     ) -> str:
         """
         为新图片生成唯一的 S3 object key。
+        Generate a unique S3 object key for a new image.
 
-        参数:
+        参数 / Args:
             file_name: 用户上传的原始文件名。
+                       Original file name supplied by the user.
             content_type: 图片的 MIME 类型。
+                          Image MIME type.
 
-        返回:
+        返回 / Returns:
             类似 uploads/8c63d49f8d8b4d3f.jpg 的字符串。
+            A value such as uploads/8c63d49f8d8b4d3f.jpg.
         """
         if content_type not in SUPPORTED_IMAGE_TYPES:
             raise ValueError(f"不支持的图片格式：{content_type}")
@@ -87,8 +97,10 @@ class S3StorageClient:
     ) -> PresignUploadResponse:
         """
         生成浏览器直传 S3 使用的预签名 POST 表单。
+        Generate a presigned POST for direct browser-to-S3 upload.
 
         该方法不会上传文件，只会生成临时上传凭证。
+        This method does not upload a file; it only creates temporary credentials.
         """
         object_key = self.create_object_key(
             file_name=file_name,
@@ -97,12 +109,15 @@ class S3StorageClient:
 
         try:
             # 生成预签名 POST 信息。
+            # Generate the presigned POST payload.
             #
             # Fields:
             #   浏览器上传时必须提交的固定字段。
+            #   Fixed fields the browser must submit.
             #
             # Conditions:
             #   S3 接收文件时必须检查的限制。
+            #   Restrictions that S3 validates before accepting the file.
 
             result = self.client.generate_presigned_post(
                 Bucket=self.settings.s3_bucket,
@@ -144,12 +159,15 @@ class S3StorageClient:
     ) -> str:
         """
         为私有 S3 对象生成临时读取地址。
+        Generate a temporary read URL for a private S3 object.
 
-        参数:
+        参数 / Args:
             object_key: 图片在 S3 中的路径。
+                        Image path in S3.
 
-        返回:
+        返回 / Returns:
             在规定时间内有效的 HTTPS URL。
+            An HTTPS URL valid for the configured duration.
         """
 
         try:

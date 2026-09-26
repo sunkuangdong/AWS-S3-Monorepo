@@ -280,6 +280,7 @@
 
 /*
  * 手机和平板布局。
+ * Mobile and tablet layout.
  */
 @media (max-width: 640px) {
   .app {
