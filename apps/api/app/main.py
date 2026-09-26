@@ -4,6 +4,12 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import get_settings
+
+settings = get_settings()
+
 # 配置项目的基础日志。
 #
 # level=logging.INFO:
@@ -31,6 +37,16 @@ app = FastAPI(
     ),
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        settings.frontend_origin,
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 把 /api/v1 下的业务路由注册到 FastAPI。
 app.include_router(api_router)
 
@@ -48,3 +64,4 @@ def health_check() -> dict[str, str]:
     return {
         "status": "ok",
     }
+

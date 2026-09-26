@@ -50,6 +50,8 @@ class Settings:
     presigned_url_expires: int
     max_upload_bytes: int
 
+    frontend_origin: str
+
 @lru_cache
 def get_settings() -> Settings:
     """
@@ -82,6 +84,10 @@ def get_settings() -> Settings:
                 "MAX_UPLOAD_BYTES",
                 str(10 * 1024 * 1024),
             )
+        ),
+        frontend_origin=os.getenv(
+            "FRONTEND_ORIGIN",
+            "http://localhost:5173",
         ),
     )
 
