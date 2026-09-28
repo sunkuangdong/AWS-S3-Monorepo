@@ -1,10 +1,21 @@
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.db.session import (
+    check_database_connection,
+    dispose_database_engine,
+)
 
 settings = get_settings()
 
@@ -28,6 +39,20 @@ logging.basicConfig(
     ),
 )
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    """
+    管理 FastAPI 应用生命周期。
+    Manage the FastAPI application lifecycle.
+
+    应用关闭时释放数据库连接池。
+    Dispose of the database connection pool on shutdown.
+    """
+    try:
+        yield
+    finally:
+        await dispose_database_engine()
+
 # 创建 FastAPI 应用对象。
 # Create the FastAPI application object.
 app = FastAPI(
@@ -37,6 +62,7 @@ app = FastAPI(
         "使用 FastAPI、Amazon S3 和 OpenAI "
         "构建的图片理解服务"
     ),
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -69,3 +95,29 @@ def health_check() -> dict[str, str]:
     return {
         "status": "ok",
     }
+
+@app.get(
+    "/health/database",
+    response_model=dict[str, str],
+    tags=["system"],
+)
+async def database_health_check() -> dict[str, str]:
+    """
+    检查 PostgreSQL 是否可以正常连接。
+    Check whether PostgreSQL is reachable.
+    """
+    try:
+        await check_database_connection()
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="数据库暂时不可用",
+        ) from error
+
+    return {
+        "status": "ok",
+        "database": "reachable",
+    }
+
+
+
