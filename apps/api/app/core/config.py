@@ -54,9 +54,10 @@ class Settings:
     s3_bucket: str
     openai_api_key: str
     openai_vision_model: str
+    image_generation_model: str
+    database_url: str
     presigned_url_expires: int
     max_upload_bytes: int
-
     frontend_origin: str
 
 @lru_cache
@@ -83,6 +84,12 @@ def get_settings() -> Settings:
         ),
         openai_vision_model=require_environment_variable(
             "MODEL_NAME"
+        ),
+        image_generation_model=require_environment_variable(
+            "IMAGE_GENERATION_MODEL"
+        ),
+        database_url=require_environment_variable(
+            "DATABASE_URL"
         ),
         # 默认有效期为 10 分钟。
         # Default expiration time: 10 minutes.
