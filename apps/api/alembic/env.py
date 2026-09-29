@@ -7,6 +7,10 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
+from app.core.config import get_settings
+from app.db.base import Base
+from app.models import ImageGeneration  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -20,7 +24,20 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None
+settings = get_settings()
+
+# Alembic 的 Config 使用百分号进行插值，
+# 因此 URL 中的百分号需要转义。
+# Alembic Config uses percent signs for interpolation,
+# so percent signs inside the URL must be escaped.
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.database_url.replace("%", "%%"),
+)
+
+# Alembic 使用 ORM metadata 检测表结构变化。
+# Alembic uses ORM metadata to detect schema changes.
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

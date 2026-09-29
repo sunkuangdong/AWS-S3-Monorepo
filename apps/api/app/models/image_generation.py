@@ -16,6 +16,7 @@ from sqlalchemy.orm import (
 
 from app.db.base import Base
 
+
 class ImageGeneration(Base):
     """
     保存一次图片生成任务及其结果。
