@@ -1,10 +1,36 @@
 from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.openai_vision import OpenAIVisionClient
 from app.clients.s3_storage import S3StorageClient
 from app.core.config import get_settings
+from app.db.session import get_database_session
+from app.repositories.image_generation import ImageGenerationRepository
 from app.services.image_service import ImageService
 
+DatabaseSessionDependency = Annotated[
+    AsyncSession,
+    Depends(get_database_session),
+]
+
+def get_image_generation_repository(
+    session: DatabaseSessionDependency,
+) -> ImageGenerationRepository:
+    """
+    为当前请求创建图片生成 Repository。
+    Create an image-generation repository for the current request.
+
+    Repository 使用当前请求的数据库 Session,
+    因此不能作为全局单例缓存。
+    The repository uses the current request's database session,
+    so it must not be cached as a global singleton.
+    """
+    return ImageGenerationRepository(
+        session=session
+    )
 
 @lru_cache(maxsize=1)
 def get_s3_storage_client() -> S3StorageClient:
