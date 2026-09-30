@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from app.clients.openai_image_generation import (
@@ -5,7 +6,13 @@ from app.clients.openai_image_generation import (
 )
 from app.clients.openai_vision import OpenAIVisionClient
 from app.clients.s3_storage import S3StorageClient
-from app.core.exceptions import InvalidObjectKeyError
+from app.core.exceptions import (
+    ImageGenerationError,
+    InvalidObjectKeyError,
+    StorageError,
+    VisionModelError,
+)
+from app.models.image_generation import ImageGeneration
 from app.repositories.image_generation import ImageGenerationRepository
 from app.schemas.image import (
     AnalyzeImageRequest,
@@ -14,6 +21,7 @@ from app.schemas.image import (
     PresignUploadResponse,
 )
 from app.schemas.image_generation import (
+    CreateImageGenerationRequest,
     ImageGenerationListResponse,
     ImageGenerationResponse,
 )
@@ -60,6 +68,141 @@ class ImageService:
         self.vision_client = vision_client
         self.image_generation_client = image_generation_client
         self.generation_repository = generation_repository
+
+    async def create_generation(
+        self,
+        request: CreateImageGenerationRequest,
+    ) -> ImageGenerationResponse:
+        """
+        创建并执行一次图片生成任务。
+
+        Create and execute one image-generation task.
+
+        执行流程 / Workflow:
+            1. 验证可选的参考图 object key
+            2. 创建并提交 pending 数据库记录
+            3. 可选地分析参考图片
+            4. 组合最终提示词
+            5. 调用 OpenAI 生成图片
+            6. 在线程中将图片上传到 S3
+            7. 更新数据库记录为 completed
+            8. 发生外部服务错误时更新为 failed
+        """
+        input_object_key = request.input_object_key
+
+        if input_object_key is not None:
+            self.validate_object_key(
+                input_object_key
+            )
+
+        generation_type = (
+            "image_to_image"
+            if input_object_key is not None
+            else "text_to_image"
+        )
+
+        # 先创建 pending 记录。
+        # First create the pending record.
+
+        generation = ImageGeneration(
+            user_prompt=request.prompt,
+            image_analysis=None,
+            final_prompt=request.prompt,
+            generation_type=generation_type,
+            input_object_key=input_object_key,
+            output_object_key=None,
+            width=request.width,
+            height=request.height,
+            status="pending",
+        )
+
+        generation = await self.generation_repository.create(
+            generation
+        )
+
+        # 先提交 pending，使任务在外部调用前持久化。
+        # Commit pending before calling external services.
+        await self.generation_repository.commit()
+
+        try:
+            image_analysis: str | None = None
+            final_prompt = request.prompt
+
+            if input_object_key is not None:
+                reference_image_url = (
+                    self.storage_client.create_presigned_download_url(
+                        object_key=input_object_key,
+                    )
+                )
+
+                image_analysis = await self.vision_client.analyze_image(
+                    image_url=reference_image_url,
+                    prompt=(
+                        "请客观描述这张参考图片中的主体、外观、姿态、"
+                        "构图、背景、光线和视觉风格，供后续图片生成使用。"
+                    ),
+                )
+
+                final_prompt = (
+                    "请根据以下参考图片信息创作一张新图片。\n\n"
+                    f"参考图片分析：\n{image_analysis}\n\n"
+                    f"用户创作要求：\n{request.prompt}"
+                )
+
+            image_bytes = (
+                await self.image_generation_client.generate_image(
+                    prompt=final_prompt,
+                    width=request.width,
+                    height=request.height,
+                )
+            )
+
+            # boto3 是同步客户端，放到工作线程中执行。
+            # boto3 is synchronous, so run the upload in a worker thread.
+            output_object_key = await asyncio.to_thread(
+                self.storage_client.upload_generated_image,
+                image_bytes=image_bytes,
+            )
+
+            generation = (
+                await self.generation_repository.mark_completed(
+                    generation,
+                    image_analysis=image_analysis,
+                    final_prompt=final_prompt,
+                    output_object_key=output_object_key,
+                )
+            )
+
+            await self.generation_repository.commit()
+        except (
+            ImageGenerationError,
+            StorageError,
+            VisionModelError,
+        ):
+            # 清理当前可能失败的数据库事务。
+            # Clear any failed database transaction.
+            await self.generation_repository.rollback()
+
+            # pending 已经在前面提交，因此可以重新查询并标记失败。
+            # The pending record was committed earlier, so retrieve it
+            # again and mark it as failed.
+            failed_generation = (
+                await self.generation_repository.get_by_id(
+                    generation.id
+                )
+            )
+
+            if failed_generation is not None:
+                await self.generation_repository.mark_failed(
+                    failed_generation
+                )
+                await self.generation_repository.commit()
+
+            raise
+
+        return ImageGenerationResponse.model_validate(
+            generation
+        )
 
     def create_upload(
         self,
