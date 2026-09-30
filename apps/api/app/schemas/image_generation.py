@@ -69,6 +69,14 @@ class ImageGenerationResponse(BaseModel):
 
     output_object_key: str | None
 
+    output_url: str | None = Field(
+        default=None,
+        description=(
+            "生成图片的临时访问地址 / "
+            "Temporary URL for accessing the generated image"
+        ),
+    )
+
     width: int = Field(
         gt=0,
     )

@@ -69,6 +69,35 @@ class ImageService:
         self.image_generation_client = image_generation_client
         self.generation_repository = generation_repository
 
+    def _build_generation_response(
+        self,
+        generation: ImageGeneration,
+    ) -> ImageGenerationResponse:
+        """
+        将数据库模型转换为包含临时图片地址的 API 响应。
+
+        Convert a database model into an API response containing
+        a temporary image URL.
+        """
+        output_url: str | None = None
+
+        if generation.output_object_key is not None:
+            output_url = (
+                self.storage_client.create_presigned_download_url(
+                    object_key=generation.output_object_key,
+                )
+            )
+
+        response = ImageGenerationResponse.model_validate(
+            generation
+        )
+
+        return response.model_copy(
+            update={
+                "output_url": output_url,
+            }
+        )
+
     async def create_generation(
         self,
         request: CreateImageGenerationRequest,
@@ -200,7 +229,7 @@ class ImageService:
 
             raise
 
-        return ImageGenerationResponse.model_validate(
+        return self._build_generation_response(
             generation
         )
 
@@ -316,7 +345,8 @@ class ImageService:
         )
 
         items = [
-            ImageGenerationResponse.model_validate(generation) for generation in generations
+            self._build_generation_response(generation)
+            for generation in generations
         ]
 
         return ImageGenerationListResponse(
@@ -344,6 +374,6 @@ class ImageService:
         if generation is None:
             return None
 
-        return ImageGenerationResponse.model_validate(
+        return self._build_generation_response(
             generation
         )
