@@ -9,6 +9,36 @@ from pydantic import (
 )
 
 
+class CreateImageGenerationRequest(BaseModel):
+    """
+    创建图片生成任务时接收的数据。
+
+    Data accepted when creating an image-generation task.
+    """
+    prompt: str = Field(
+        min_length=1,
+        max_length=400,
+        description=(
+            "用户输入的图片生成要求 / "
+            "Image-generation request supplied by the user"
+        ),
+    )
+
+    input_object_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=1024,
+        description=(
+            "可选的参考图片 S3 object key / "
+            "Optional S3 object key of the reference image"
+        ),
+    )
+
+    # 第一版只开放已经验证过的 1024×1024。
+    # The first version only exposes the verified 1024×1024 size.
+    width: Literal[1024] = 1024
+    height: Literal[1024] = 1024
+
 class ImageGenerationResponse(BaseModel):
     """
     返回给前端的图片生成记录。
