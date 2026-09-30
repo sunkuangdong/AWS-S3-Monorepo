@@ -187,3 +187,56 @@ class S3StorageClient:
             raise StorageError(
                 "生成 S3 预签名读取地址失败"
             ) from error
+
+    def upload_generated_image(
+            self,
+            *,
+            image_bytes: bytes,
+        ) -> str:
+            """
+            将生成的 PNG 图片上传到 S3。
+    
+            Upload a generated PNG image to S3.
+    
+            参数 / Args:
+                image_bytes:
+                    图片的原始二进制内容。
+                    Raw binary content of the image.
+    
+            返回 / Returns:
+                图片在 S3 中的 object key。
+                Object key of the image in S3.
+    
+            异常 / Raises:
+                图片内容为空时抛出 ValueError。
+                S3 上传失败时抛出 StorageError。
+                ValueError for empty image content.
+                StorageError when the S3 upload fails.
+            """
+            if not image_bytes:
+                raise ValueError(
+                    "生成图片内容不能为空"
+                )
+    
+            object_key = (
+                f"generations/{uuid4().hex}.png"
+            )
+    
+            try:
+                self.client.put_object(
+                    Bucket=self.settings.s3_bucket,
+                    Key=object_key,
+                    Body=image_bytes,
+                    ContentType="image/png",
+                    ContentLength=len(image_bytes),
+                )
+            except (
+                BotoCoreError,
+                ClientError,
+                NoCredentialsError,
+            ) as error:
+                raise StorageError(
+                    "上传生成图片到 S3 失败"
+                ) from error
+    
+            return object_key
