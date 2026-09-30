@@ -4,6 +4,9 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.openai_image_generation import (
+    OpenAIImageGenerationClient,
+)
 from app.clients.openai_vision import OpenAIVisionClient
 from app.clients.s3_storage import S3StorageClient
 from app.core.config import get_settings
@@ -90,5 +93,19 @@ def get_image_service(
     return ImageService(
         storage_client=get_s3_storage_client(),
         vision_client=get_openai_vision_client(),
+        image_generation_client=get_openai_image_generation_client(),
         generation_repository=generation_repository,
+    )
+
+@lru_cache(maxsize=1)
+def get_openai_image_generation_client() -> OpenAIImageGenerationClient:
+    """
+    创建并缓存 OpenAI 图片生成客户端。
+    Create and cache the OpenAI image-generation client.
+
+    应用运行期间复用同一个底层 HTTP 客户端。
+    Reuse one underlying HTTP client during the application lifetime.
+    """
+    return OpenAIImageGenerationClient(
+        settings=get_settings(),
     )

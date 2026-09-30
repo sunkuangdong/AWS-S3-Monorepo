@@ -1,5 +1,8 @@
 from uuid import UUID
 
+from app.clients.openai_image_generation import (
+    OpenAIImageGenerationClient,
+)
 from app.clients.openai_vision import OpenAIVisionClient
 from app.clients.s3_storage import S3StorageClient
 from app.core.exceptions import InvalidObjectKeyError
@@ -37,6 +40,7 @@ class ImageService:
         self,
         storage_client: S3StorageClient,
         vision_client: OpenAIVisionClient,
+        image_generation_client: OpenAIImageGenerationClient,
         generation_repository: ImageGenerationRepository,
     ) -> None:
         """
@@ -54,6 +58,7 @@ class ImageService:
         """
         self.storage_client = storage_client
         self.vision_client = vision_client
+        self.image_generation_client = image_generation_client
         self.generation_repository = generation_repository
 
     def create_upload(

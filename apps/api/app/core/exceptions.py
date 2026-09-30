@@ -50,3 +50,21 @@ class InvalidObjectKeyError(ApplicationError):
     当前项目只允许操作 uploads/ 目录中的对象。
     The current application only accepts objects below uploads/.
     """
+
+class ImageGenerationError(ApplicationError):
+    """
+    OpenAI 图片生成失败时抛出。
+    Raised when OpenAI image generation fails.
+
+    示例 / Examples:
+    - API Key 无效
+    - 账户额度不足
+    - 模型不可用
+    - 提示词被安全策略拒绝
+    - OpenAI 没有返回图片数据
+    - Invalid API key
+    - Insufficient account quota
+    - Unavailable model
+    - Prompt rejected by safety policies
+    - Missing image data in the OpenAI response
+    """
