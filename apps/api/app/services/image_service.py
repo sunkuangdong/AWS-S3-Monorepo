@@ -172,7 +172,7 @@ class ImageService:
                     output_object_key=output_object_key,
                 )
             )
-
+            
             await self.generation_repository.commit()
         except (
             ImageGenerationError,

@@ -11,6 +11,7 @@ from fastapi import (
 )
 
 from app.core.exceptions import (
+    ImageGenerationError,
     InvalidObjectKeyError,
     StorageError,
     VisionModelError,
@@ -22,7 +23,11 @@ from app.schemas.image import (
     PresignUploadRequest,
     PresignUploadResponse,
 )
-from app.schemas.image_generation import ImageGenerationListResponse, ImageGenerationResponse
+from app.schemas.image_generation import (
+    CreateImageGenerationRequest,
+    ImageGenerationListResponse,
+    ImageGenerationResponse,
+)
 from app.services.image_service import ImageService
 
 # 创建当前模块的日志记录器。
@@ -202,3 +207,48 @@ async def get_image_generation(
         )
 
     return generation
+
+@router.post(
+    "/generations",
+    response_model=ImageGenerationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_image_generation(
+    request: CreateImageGenerationRequest,
+    image_service: ImageServiceDependency,
+) -> ImageGenerationResponse:
+    """
+    创建并执行图片生成任务。
+
+    Create and execute an image-generation task.
+    """
+    try:
+        return await image_service.create_generation(
+            request
+        )
+    except InvalidObjectKeyError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+    except VisionModelError as error:
+        logger.exception("OpenAI 参考图片分析失败")
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="暂时无法分析参考图片",
+        ) from error
+    except ImageGenerationError as error:
+        logger.exception("OpenAI 图片生成失败")
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="暂时无法生成图片",
+        ) from error
+    except StorageError as error:
+        logger.exception("图片存储操作失败")
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="暂时无法读取或保存图片",
+        ) from error
