@@ -55,6 +55,7 @@ class ImageGenerationResponse(BaseModel):
 
     created_at: datetime
 
+
 class ImageGenerationListResponse(BaseModel):
     """
     图片生成历史列表响应。

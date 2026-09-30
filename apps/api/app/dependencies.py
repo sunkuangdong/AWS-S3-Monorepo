@@ -32,6 +32,13 @@ def get_image_generation_repository(
         session=session
     )
 
+# 当前请求使用的图片生成 Repository。
+# Image-generation repository used by the current request.
+ImageGenerationRepositoryDependency = Annotated[
+    ImageGenerationRepository,
+    Depends(get_image_generation_repository),
+]
+
 @lru_cache(maxsize=1)
 def get_s3_storage_client() -> S3StorageClient:
     """
@@ -68,16 +75,20 @@ def get_openai_vision_client() -> OpenAIVisionClient:
         settings=get_settings()
     )
 
-@lru_cache(maxsize=1)
-def get_image_service() -> ImageService:
+def get_image_service(
+    generation_repository: ImageGenerationRepositoryDependency,
+) -> ImageService:
     """
-    创建并缓存图片业务服务。
-    Create and cache the image application service.
+    为当前请求创建图片业务服务。
+    Create the image service for the current request.
 
-    将 S3 客户端和 OpenAI 客户端注入 ImageService。
-    Inject the S3 and OpenAI clients into ImageService.
+    S3 和 OpenAI 客户端可以长期复用，
+    Repository 则跟随当前请求的数据库 Session。
+    The S3 and OpenAI clients can be reused, while the repository
+    follows the database session of the current request.
     """
     return ImageService(
         storage_client=get_s3_storage_client(),
         vision_client=get_openai_vision_client(),
+        generation_repository=generation_repository,
     )

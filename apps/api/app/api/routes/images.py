@@ -1,10 +1,12 @@
 import logging
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     status,
 )
 
@@ -20,6 +22,7 @@ from app.schemas.image import (
     PresignUploadRequest,
     PresignUploadResponse,
 )
+from app.schemas.image_generation import ImageGenerationListResponse, ImageGenerationResponse
 from app.services.image_service import ImageService
 
 # 创建当前模块的日志记录器。
@@ -140,3 +143,62 @@ async def analyze_image(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OpenAI 暂时无法分析图片",
         ) from error
+
+@router.get(
+    "/generations",
+    response_model=ImageGenerationListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_image_generations(
+    image_service: ImageServiceDependency,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=100,
+            description="每页返回数量 / Number of records per page",
+        ),
+    ] = 20,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description="跳过的记录数量 / Number of records to skip",
+        ),
+    ] = 0,
+) -> ImageGenerationListResponse:
+    """
+    查询图片生成历史记录。
+
+    List image-generation history records.
+    """
+    return await image_service.list_generations(
+        limit=limit,
+        offset=offset,
+    )
+
+@router.get(
+    "/generations/{generation_id}",
+    response_model=ImageGenerationResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_image_generation(
+    generation_id: UUID,
+    image_service: ImageServiceDependency,
+) -> ImageGenerationResponse:
+    """
+    根据 UUID 查询单条图片生成记录。
+
+    Get one image-generation record by UUID.
+    """
+    generation = await image_service.get_generation(
+        generation_id
+    )
+
+    if generation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="图片生成记录不存在",
+        )
+
+    return generation

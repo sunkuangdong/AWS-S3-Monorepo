@@ -1,11 +1,18 @@
+from uuid import UUID
+
 from app.clients.openai_vision import OpenAIVisionClient
 from app.clients.s3_storage import S3StorageClient
 from app.core.exceptions import InvalidObjectKeyError
+from app.repositories.image_generation import ImageGenerationRepository
 from app.schemas.image import (
     AnalyzeImageRequest,
     AnalyzeImageResponse,
     PresignUploadRequest,
     PresignUploadResponse,
+)
+from app.schemas.image_generation import (
+    ImageGenerationListResponse,
+    ImageGenerationResponse,
 )
 
 
@@ -30,6 +37,7 @@ class ImageService:
         self,
         storage_client: S3StorageClient,
         vision_client: OpenAIVisionClient,
+        generation_repository: ImageGenerationRepository,
     ) -> None:
         """
         创建图片业务服务。
@@ -46,6 +54,7 @@ class ImageService:
         """
         self.storage_client = storage_client
         self.vision_client = vision_client
+        self.generation_repository = generation_repository
 
     def create_upload(
         self,
@@ -135,4 +144,58 @@ class ImageService:
         return AnalyzeImageResponse(
             object_key=request.object_key,
             description=description,
+        )
+
+    async def list_generations(
+        self,
+        *,
+        limit: int,
+        offset: int,
+    ) -> ImageGenerationListResponse:
+        """
+        查询图片生成历史记录。
+
+        List image-generation history records.
+
+        记录按照创建时间倒序排列，
+        最新创建的记录出现在最前面。
+        Records are ordered by creation time in descending order,
+        with the newest record first.
+        """
+        generations = await self.generation_repository.list_recent(
+            limit=limit,
+            offset=offset,
+        )
+
+        items = [
+            ImageGenerationResponse.model_validate(generation) for generation in generations
+        ]
+
+        return ImageGenerationListResponse(
+            items=items,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def get_generation(
+        self,
+        generation_id: UUID,
+    ) -> ImageGenerationResponse | None:
+        """
+        根据 UUID 查询图片生成记录。
+
+        Find an image-generation record by UUID.
+
+        找不到记录时返回 None。
+        Return None when the record does not exist.
+        """
+        generation = await self.generation_repository.get_by_id(
+            generation_id
+        )
+
+        if generation is None:
+            return None
+
+        return ImageGenerationResponse.model_validate(
+            generation
         )
