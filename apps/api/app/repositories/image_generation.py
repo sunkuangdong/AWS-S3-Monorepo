@@ -46,6 +46,61 @@ class ImageGenerationRepository:
 
         return generation
 
+    async def mark_completed(
+        self,
+        generation: ImageGeneration,
+        *,
+        image_analysis: str | None,
+        final_prompt: str,
+        output_object_key: str,
+    ) -> ImageGeneration:
+        """
+        将图片生成任务更新为完成状态。
+
+        Mark an image-generation task as completed.
+        """
+        generation.image_analysis = image_analysis
+        generation.final_prompt = final_prompt
+        generation.output_object_key = output_object_key
+        generation.status = "completed"
+
+        await self.session.flush()
+        await self.session.refresh(generation)
+
+        return generation
+
+    async def mark_failed(
+        self,
+        generation: ImageGeneration,
+    ) -> ImageGeneration:
+        """
+        将图片生成任务更新为失败状态。
+
+        Mark an image-generation task as failed.
+        """
+        generation.status = "failed"
+
+        await self.session.flush()
+        await self.session.refresh(generation)
+
+        return generation
+
+    async def commit(self) -> None:
+        """
+        提交当前数据库事务。
+
+        Commit the current database transaction.
+        """
+        await self.session.commit()
+
+    async def rollback(self) -> None:
+        """
+        回滚当前数据库事务。
+
+        Roll back the current database transaction.
+        """
+        await self.session.rollback()
+
     async def get_by_id(
         self,
         generation_id:UUID,
