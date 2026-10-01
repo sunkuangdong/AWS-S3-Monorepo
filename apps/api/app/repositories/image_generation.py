@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.image_generation import ImageGeneration
@@ -145,4 +145,20 @@ class ImageGenerationRepository:
         result = await self.session.scalars(statement)
 
         return list(result.all())
+
+    async def count_all(self) -> int:
+        """
+        统计所有图片生成记录的数量。
+
+        Count all image-generation records.
+        """
+        statement = select(
+            func.count()
+        ).select_from(
+            ImageGeneration
+        )
+
+        total = await self.session.scalar(statement)
+
+        return int(total or 0)
 

@@ -102,6 +102,14 @@ class ImageGenerationListResponse(BaseModel):
     """
     items: list[ImageGenerationResponse]
 
+    total: int = Field(
+        ge=0,
+        description=(
+            "图片生成记录总数 / "
+            "Total number of image-generation records"
+        ),
+    )
+
     limit: int = Field(
         ge=1,
     )

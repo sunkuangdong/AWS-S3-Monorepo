@@ -386,6 +386,10 @@ class ImageService:
             offset=offset,
         )
 
+        total = (
+            await self.generation_repository.count_all()
+        )
+
         items = [
             self._build_generation_response(generation)
             for generation in generations
@@ -393,6 +397,7 @@ class ImageService:
 
         return ImageGenerationListResponse(
             items=items,
+            total=total,
             limit=limit,
             offset=offset,
         )
