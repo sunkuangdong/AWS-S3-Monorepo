@@ -3,6 +3,10 @@ import type {
   FormEvent,
 } from 'react'
 
+import {
+  AppHeader,
+} from '../components/layout/AppHeader'
+import type { AppPage } from '../components/layout/AppHeader'
 import { useCreateImageViewModel } from '../viewmodels/useCreateImageViewModel'
 
 function ImageIcon() {
@@ -36,7 +40,13 @@ function SparkleIcon() {
   )
 }
 
-export function CreateImagePage() {
+interface CreateImagePageProps {
+  onNavigate: (page: AppPage) => void
+}
+
+export function CreateImagePage({
+  onNavigate,
+}: CreateImagePageProps) {
   const viewModel = useCreateImageViewModel()
 
   function handleFileChange(
@@ -60,16 +70,10 @@ export function CreateImagePage() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="/" aria-label="AI 画板首页">
-          <span className="brand-mark">
-            <SparkleIcon />
-          </span>
-          <span>AI 画板</span>
-        </a>
-
-        <span className="header-badge">图片创作</span>
-      </header>
+      <AppHeader
+        activePage="create"
+        onNavigate={onNavigate}
+      />
 
       <div className="creator-layout">
         <section className="creator-intro">

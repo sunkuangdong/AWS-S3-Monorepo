@@ -126,6 +126,24 @@ export interface ImageGenerationResponse {
 }
 
 /**
+ * 图片生成历史列表响应。
+ * Image-generation history list response.
+ */
+export interface ImageGenerationListResponse {
+    /** 当前页记录。 / Records on the current page. */
+    items: ImageGenerationResponse[]
+
+    /** 全部记录数量。 / Total number of records. */
+    total: number
+
+    /** 每页最多返回数量。 / Maximum records per page. */
+    limit: number
+
+    /** 跳过的记录数量。 / Number of skipped records. */
+    offset: number
+}
+
+/**
  * FastAPI 返回的常见错误格式。
  * Common FastAPI error response shape.
  *

@@ -3,6 +3,7 @@ import type {
     AnalyzeImageResponse,
     ApiErrorResponse,
     CreateImageGenerationRequest,
+    ImageGenerationListResponse,
     ImageGenerationResponse,
     PresignUploadRequest,
     PresignUploadResponse,
@@ -170,4 +171,30 @@ export async function createImageGeneration(
   }
 
   return (await response.json()) as ImageGenerationResponse
+}
+
+/**
+ * 查询图片生成历史记录。
+ * Fetch image-generation history records.
+ */
+export async function listImageGenerations(
+  limit = 20,
+  offset = 0,
+): Promise<ImageGenerationListResponse> {
+  const searchParams = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  })
+
+  const response = await fetch(
+    `${apiBaseUrl}/api/v1/images/generations?${searchParams.toString()}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response),
+    )
+  }
+
+  return (await response.json()) as ImageGenerationListResponse
 }
