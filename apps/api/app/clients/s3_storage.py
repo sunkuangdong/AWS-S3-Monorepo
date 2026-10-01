@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,6 +18,19 @@ SUPPORTED_IMAGE_TYPES: dict[str, str] = {
     "image/png": ".png",
     "image/webp": ".webp",
 }
+
+
+@dataclass(frozen=True)
+class StoredImage:
+    """
+    从 S3 读取的图片内容及其元数据。
+    Image content and metadata read from S3.
+    """
+
+    data: bytes
+    file_name: str
+    content_type: str
+
 
 class S3StorageClient:
     """
@@ -188,55 +202,115 @@ class S3StorageClient:
                 "生成 S3 预签名读取地址失败"
             ) from error
 
-    def upload_generated_image(
-            self,
-            *,
-            image_bytes: bytes,
-        ) -> str:
-            """
-            将生成的 PNG 图片上传到 S3。
-    
-            Upload a generated PNG image to S3.
-    
-            参数 / Args:
-                image_bytes:
-                    图片的原始二进制内容。
-                    Raw binary content of the image.
-    
-            返回 / Returns:
-                图片在 S3 中的 object key。
-                Object key of the image in S3.
-    
-            异常 / Raises:
-                图片内容为空时抛出 ValueError。
-                S3 上传失败时抛出 StorageError。
-                ValueError for empty image content.
-                StorageError when the S3 upload fails.
-            """
-            if not image_bytes:
-                raise ValueError(
-                    "生成图片内容不能为空"
-                )
-    
-            object_key = (
-                f"generations/{uuid4().hex}.png"
+    def download_image(
+        self,
+        *,
+        object_key: str,
+    ) -> StoredImage:
+        """
+        从私有 S3 Bucket 读取一张参考图。
+        Read one reference image from the private S3 bucket.
+
+        返回原始字节和文件元数据，供图片编辑 API 使用。
+        Return raw bytes and file metadata for the image editing API.
+        """
+        try:
+            response = self.client.get_object(
+                Bucket=self.settings.s3_bucket,
+                Key=object_key,
             )
-    
+
+            body = response["Body"]
             try:
-                self.client.put_object(
-                    Bucket=self.settings.s3_bucket,
-                    Key=object_key,
-                    Body=image_bytes,
-                    ContentType="image/png",
-                    ContentLength=len(image_bytes),
+                image_bytes = body.read(
+                    self.settings.max_upload_bytes + 1
                 )
-            except (
-                BotoCoreError,
-                ClientError,
-                NoCredentialsError,
-            ) as error:
-                raise StorageError(
-                    "上传生成图片到 S3 失败"
-                ) from error
-    
-            return object_key
+            finally:
+                body.close()
+        except (
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+        ) as error:
+            raise StorageError(
+                "从 S3 读取参考图失败"
+            ) from error
+
+        if not image_bytes:
+            raise StorageError(
+                "S3 中的参考图内容为空"
+            )
+
+        if len(image_bytes) > self.settings.max_upload_bytes:
+            raise StorageError(
+                "S3 中的参考图超过大小限制"
+            )
+
+        content_type = response.get(
+            "ContentType",
+            "application/octet-stream",
+        )
+
+        if content_type not in SUPPORTED_IMAGE_TYPES:
+            raise StorageError(
+                f"S3 中的参考图格式不受支持：{content_type}"
+            )
+
+        return StoredImage(
+            data=image_bytes,
+            file_name=Path(object_key).name,
+            content_type=content_type,
+        )
+
+    def upload_generated_image(
+        self,
+        *,
+        image_bytes: bytes,
+    ) -> str:
+        """
+        将生成的 PNG 图片上传到 S3。
+
+        Upload a generated PNG image to S3.
+
+        参数 / Args:
+            image_bytes:
+                图片的原始二进制内容。
+                Raw binary content of the image.
+
+        返回 / Returns:
+            图片在 S3 中的 object key。
+            Object key of the image in S3.
+
+        异常 / Raises:
+            图片内容为空时抛出 ValueError。
+            S3 上传失败时抛出 StorageError。
+            ValueError for empty image content.
+            StorageError when the S3 upload fails.
+        """
+        if not image_bytes:
+            raise ValueError(
+                "生成图片内容不能为空"
+            )
+
+        object_key = (
+            f"generations/{uuid4().hex}.png"
+        )
+
+        try:
+            self.client.put_object(
+                Bucket=self.settings.s3_bucket,
+                Key=object_key,
+                Body=image_bytes,
+                ContentType="image/png",
+                ContentLength=len(image_bytes),
+            )
+        except (
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+        ) as error:
+            raise StorageError(
+                "上传生成图片到 S3 失败"
+            ) from error
+
+        return object_key

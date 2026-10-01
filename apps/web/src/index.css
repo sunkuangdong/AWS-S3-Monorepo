@@ -8,8 +8,8 @@
     "Segoe UI",
     sans-serif;
 
-  color: #1f2937;
-  background: #f3f4f6;
+  color: #1b1c1a;
+  background: #f3f0e9;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -38,17 +38,9 @@ body {
   margin: 0;
 
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(147, 197, 253, 0.35),
-      transparent 35%
-    ),
-    radial-gradient(
-      circle at top right,
-      rgba(196, 181, 253, 0.3),
-      transparent 35%
-    ),
-    #f3f4f6;
+    radial-gradient(circle at 11% 8%, rgba(217, 175, 140, 0.25), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(193, 202, 177, 0.25), transparent 30%),
+    #f3f0e9;
 }
 
 button,

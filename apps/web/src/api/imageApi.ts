@@ -2,6 +2,8 @@ import type {
     AnalyzeImageRequest,
     AnalyzeImageResponse,
     ApiErrorResponse,
+    CreateImageGenerationRequest,
+    ImageGenerationResponse,
     PresignUploadRequest,
     PresignUploadResponse,
 } from "../types/image"
@@ -141,4 +143,31 @@ export async function analyzeImage(
   }
 
   return (await response.json()) as AnalyzeImageResponse
+}
+
+/**
+ * 创建并执行一次图片生成任务。
+ * Create and execute an image-generation task.
+ */
+export async function createImageGeneration(
+  request: CreateImageGenerationRequest,
+): Promise<ImageGenerationResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/v1/images/generations`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response),
+    )
+  }
+
+  return (await response.json()) as ImageGenerationResponse
 }

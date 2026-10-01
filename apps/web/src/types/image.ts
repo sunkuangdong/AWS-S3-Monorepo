@@ -70,6 +70,61 @@ export interface AnalyzeImageResponse {
     /** OpenAI 返回的图片描述。 / Image description returned by OpenAI. */
     description: string
 }
+
+/**
+ * 创建图片生成任务时发送的数据。
+ * Data sent when creating an image-generation task.
+ */
+export interface CreateImageGenerationRequest {
+    /** 用户的创作描述。 / User's creation prompt. */
+    prompt: string
+
+    /** 可选的参考图 S3 路径。 / Optional reference-image S3 path. */
+    input_object_key: string | null
+
+    /** 当前版本固定为 1024。 / Fixed to 1024 in the current version. */
+    width: 1024
+
+    /** 当前版本固定为 1024。 / Fixed to 1024 in the current version. */
+    height: 1024
+}
+
+/**
+ * 图片生成任务的处理状态。
+ * Processing status of an image-generation task.
+ */
+export type ImageGenerationStatus =
+    | 'pending'
+    | 'completed'
+    | 'failed'
+
+/**
+ * 图片生成方式。
+ * Image-generation mode.
+ */
+export type ImageGenerationType =
+    | 'text_to_image'
+    | 'image_to_image'
+
+/**
+ * FastAPI 返回的图片生成记录。
+ * Image-generation record returned by FastAPI.
+ */
+export interface ImageGenerationResponse {
+    id: string
+    user_prompt: string
+    image_analysis: string | null
+    final_prompt: string
+    generation_type: ImageGenerationType
+    input_object_key: string | null
+    output_object_key: string | null
+    output_url: string | null
+    width: number
+    height: number
+    status: ImageGenerationStatus
+    created_at: string
+}
+
 /**
  * FastAPI 返回的常见错误格式。
  * Common FastAPI error response shape.

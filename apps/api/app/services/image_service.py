@@ -98,6 +98,35 @@ class ImageService:
             }
         )
 
+    @staticmethod
+    def _build_edit_prompt(
+        *,
+        user_prompt: str,
+        image_analysis: str,
+    ) -> str:
+        """
+        组合保持参考图主体一致性的编辑提示词。
+        Build an editing prompt that preserves reference-subject identity.
+        """
+        return (
+            "Edit the provided reference image. Treat the input image as "
+            "the visual source of truth; do not recreate it from scratch.\n\n"
+            "Requested edit:\n"
+            f"{user_prompt}\n\n"
+            "Editing rules:\n"
+            "- Follow the user's requested edit as the highest priority.\n"
+            "- Attributes explicitly requested by the user may be changed, including "
+            "identity, facial features, colors, markings, body proportions, pose, "
+            "expression, composition, and camera angle.\n"
+            "- Preserve only the attributes and image regions that the user did not "
+            "explicitly request to change.\n"
+            "- Do not introduce unrelated changes.\n"
+            "- Maintain natural edges, lighting, shadows, and color transitions.\n\n"
+            "Reference analysis is secondary context only. If it conflicts with "
+            "the input image, follow the input image:\n"
+            f"{image_analysis}"
+        )
+
     async def create_generation(
         self,
         request: CreateImageGenerationRequest,
@@ -110,9 +139,9 @@ class ImageService:
         执行流程 / Workflow:
             1. 验证可选的参考图 object key
             2. 创建并提交 pending 数据库记录
-            3. 可选地分析参考图片
-            4. 组合最终提示词
-            5. 调用 OpenAI 生成图片
+            3. 可选地分析并下载参考图片
+            4. 组合保持主体一致性的编辑提示词
+            5. 调用 OpenAI 生成或编辑图片
             6. 在线程中将图片上传到 S3
             7. 更新数据库记录为 completed
             8. 发生外部服务错误时更新为 failed
@@ -172,19 +201,32 @@ class ImageService:
                     ),
                 )
 
-                final_prompt = (
-                    "请根据以下参考图片信息创作一张新图片。\n\n"
-                    f"参考图片分析：\n{image_analysis}\n\n"
-                    f"用户创作要求：\n{request.prompt}"
+                reference_image = await asyncio.to_thread(
+                    self.storage_client.download_image,
+                    object_key=input_object_key,
                 )
 
-            image_bytes = (
-                await self.image_generation_client.generate_image(
+                final_prompt = self._build_edit_prompt(
+                    user_prompt=request.prompt,
+                    image_analysis=image_analysis,
+                )
+
+                image_bytes = await self.image_generation_client.edit_image(
+                    image_bytes=reference_image.data,
+                    file_name=reference_image.file_name,
+                    content_type=reference_image.content_type,
                     prompt=final_prompt,
                     width=request.width,
                     height=request.height,
                 )
-            )
+            else:
+                image_bytes = (
+                    await self.image_generation_client.generate_image(
+                        prompt=final_prompt,
+                        width=request.width,
+                        height=request.height,
+                    )
+                )
 
             # boto3 是同步客户端，放到工作线程中执行。
             # boto3 is synchronous, so run the upload in a worker thread.

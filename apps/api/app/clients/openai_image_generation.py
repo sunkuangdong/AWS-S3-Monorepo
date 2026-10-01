@@ -2,6 +2,7 @@ import base64
 import binascii
 
 from openai import AsyncOpenAI, OpenAIError
+from openai.types.images_response import ImagesResponse
 
 from app.core.config import Settings
 from app.core.exceptions import ImageGenerationError
@@ -33,6 +34,36 @@ class OpenAIImageGenerationClient:
             api_key=settings.openai_api_key,
             timeout=180.0,
         )
+
+    @staticmethod
+    def _decode_first_image(
+        response: ImagesResponse,
+    ) -> bytes:
+        """
+        解码 OpenAI 返回的第一张 Base64 图片。
+        Decode the first Base64 image returned by OpenAI.
+        """
+        if not response.data:
+            raise ImageGenerationError(
+                "OpenAI 没有返回图片数据"
+            )
+
+        encoded_image = response.data[0].b64_json
+
+        if not encoded_image:
+            raise ImageGenerationError(
+                "OpenAI 返回的图片内容为空"
+            )
+
+        try:
+            return base64.b64decode(
+                encoded_image,
+                validate=True,
+            )
+        except binascii.Error as error:
+            raise ImageGenerationError(
+                "OpenAI 返回的图片数据无法解码"
+            ) from error
 
     async def generate_image(
         self,
@@ -83,24 +114,52 @@ class OpenAIImageGenerationClient:
                 "OpenAI 图片生成请求失败"
             ) from error
 
-        if not response.data:
+        return self._decode_first_image(response)
+
+    async def edit_image(
+        self,
+        *,
+        image_bytes: bytes,
+        file_name: str,
+        content_type: str,
+        prompt: str,
+        width: int,
+        height: int,
+    ) -> bytes:
+        """
+        使用原始参考图执行图片编辑。
+        Edit an image while supplying the original reference image.
+
+        原图会作为 multipart 文件发给 OpenAI，而不是只发送
+        视觉模型生成的文字描述。
+        The original image is sent as a multipart file instead of being
+        replaced by a text-only vision description.
+        """
+        if not image_bytes:
             raise ImageGenerationError(
-                "OpenAI 没有返回图片数据"
+                "参考图内容不能为空"
             )
 
-        encoded_image = response.data[0].b64_json
-
-        if not encoded_image:
-            raise ImageGenerationError(
-                "OpenAI 返回的图片内容为空"
-            )
+        size = f"{width}x{height}"
+        image_file = (
+            file_name,
+            image_bytes,
+            content_type,
+        )
 
         try:
-            return base64.b64decode(
-                encoded_image,
-                validate=True,
+            response = await self.client.images.edit(
+                model=self.settings.image_generation_model,
+                image=image_file,
+                prompt=prompt,
+                n=1,
+                size=size,
+                quality="high",
+                output_format="png",
             )
-        except binascii.Error as error:
+        except OpenAIError as error:
             raise ImageGenerationError(
-                "OpenAI 返回的图片数据无法解码"
+                "OpenAI 图片编辑请求失败"
             ) from error
+
+        return self._decode_first_image(response)
