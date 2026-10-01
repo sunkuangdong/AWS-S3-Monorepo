@@ -1,4 +1,5 @@
 import type { ImageGenerationResponse } from '../../types/image'
+import { AppTooltip } from '../ui/AppTooltip'
 import { ImageStatusBadge } from './ImageStatusBadge'
 
 interface ImageGenerationCardProps {
@@ -58,7 +59,11 @@ export function ImageGenerationCard({
 
       <div className="generation-card-content">
         <div className="generation-card-heading">
-          <p>{generation.user_prompt}</p>
+          <AppTooltip content={generation.user_prompt}>
+            <p tabIndex={0}>
+              {generation.user_prompt}
+            </p>
+          </AppTooltip>
           <ImageStatusBadge status={generation.status} />
         </div>
 

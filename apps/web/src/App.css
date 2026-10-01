@@ -188,15 +188,41 @@
 }
 
 .generation-card-heading p {
-  display: -webkit-box;
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   color: #292a27;
   font-size: 0.96rem;
   font-weight: 720;
   line-height: 1.55;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generation-card-heading p:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid rgba(161, 78, 42, 0.55);
+  outline-offset: 3px;
+}
+
+.app-tooltip-content {
+  z-index: 1000;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 12px;
+  color: #fdfcf8;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  background: #252622;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(27, 28, 26, 0.24);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: tooltip-enter 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-tooltip-arrow {
+  fill: #252622;
 }
 
 .generation-status {
@@ -757,6 +783,18 @@
   50% {
     opacity: 1;
     transform: scale(1.15);
+  }
+}
+
+@keyframes tooltip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
