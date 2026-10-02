@@ -387,7 +387,7 @@ class ImageService:
         )
 
         total = (
-            await self.generation_repository.count_all()
+            await self.generation_repository.count_active()
         )
 
         items = [
@@ -414,8 +414,10 @@ class ImageService:
         找不到记录时返回 None。
         Return None when the record does not exist.
         """
-        generation = await self.generation_repository.get_by_id(
-            generation_id
+        generation = (
+            await self.generation_repository.get_active_by_id(
+                generation_id
+            )
         )
 
         if generation is None:

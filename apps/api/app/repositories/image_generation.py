@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -146,19 +147,58 @@ class ImageGenerationRepository:
 
         return list(result.all())
 
-    async def count_all(self) -> int:
+    async def count_active(self) -> int:
         """
-        统计所有图片生成记录的数量。
+        统计未删除图片生成记录的数量。
 
-        Count all image-generation records.
+        Count active image-generation records.
         """
-        statement = select(
-            func.count()
-        ).select_from(
-            ImageGeneration
+        statement = (
+            select(func.count())
+            .select_from(ImageGeneration)
+            .where(
+                ImageGeneration.deleted_at.is_(None)
+            )
         )
 
         total = await self.session.scalar(statement)
 
         return int(total or 0)
 
+    async def get_active_by_id(
+        self,
+        generation_id: UUID,
+    ) -> ImageGeneration | None:
+        """
+        根据 UUID 查询一条未删除记录。
+
+        Find one active record by UUID.
+        """
+        statement = select(
+            ImageGeneration
+        ).where(
+            ImageGeneration.id == generation_id,
+            ImageGeneration.deleted_at.is_(None),
+        )
+
+        return await self.session.scalar(statement)
+
+    async def soft_delete(
+        self,
+        generation: ImageGeneration,
+    ) -> ImageGeneration:
+        """
+        设置记录的软删除时间。
+
+        Set the soft-deletion timestamp of a record.
+
+        此方法只执行 flush，不提交事务。
+        This method flushes changes but does not commit the transaction.
+        """
+        generation.deleted_at = datetime.now(UTC)
+
+        await self.session.flush()
+        await self.session.refresh(generation)
+
+        return generation
+    
