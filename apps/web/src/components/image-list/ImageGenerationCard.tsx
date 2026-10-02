@@ -1,9 +1,18 @@
 import type { ImageGenerationResponse } from '../../types/image'
 import { AppTooltip } from '../ui/AppTooltip'
+import { ImageCardActions } from './ImageCardActions'
 import { ImageStatusBadge } from './ImageStatusBadge'
 
 interface ImageGenerationCardProps {
   generation: ImageGenerationResponse
+  isDownloading?: boolean
+  isDeleting?: boolean
+  onDownload?: (
+    generation: ImageGenerationResponse,
+  ) => void
+  onDelete?: (
+    generation: ImageGenerationResponse,
+  ) => void
 }
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -24,6 +33,10 @@ function getModeLabel(
 
 export function ImageGenerationCard({
   generation,
+  isDownloading = false,
+  isDeleting = false,
+  onDownload,
+  onDelete,
 }: ImageGenerationCardProps) {
   const imageContent = generation.output_url ? (
     <img
@@ -41,21 +54,43 @@ export function ImageGenerationCard({
 
   return (
     <article className="generation-card">
-      {generation.output_url ? (
-        <a
-          className="generation-thumbnail"
-          href={generation.output_url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`打开图片：${generation.user_prompt}`}
-        >
-          {imageContent}
-        </a>
-      ) : (
-        <div className="generation-thumbnail is-placeholder">
-          {imageContent}
-        </div>
-      )}
+      <div className="generation-image-area">
+        {generation.output_url ? (
+          <a
+            className="generation-thumbnail"
+            href={generation.output_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`打开图片：${generation.user_prompt}`}
+          >
+            {imageContent}
+          </a>
+        ) : (
+          <div className="generation-thumbnail is-placeholder">
+            {imageContent}
+          </div>
+        )}
+
+        <ImageCardActions
+          prompt={generation.user_prompt}
+          canDownload={
+            generation.status === 'completed'
+            && generation.output_object_key !== null
+          }
+          isDownloading={isDownloading}
+          isDeleting={isDeleting}
+          onDownload={
+            onDownload
+              ? () => onDownload(generation)
+              : undefined
+          }
+          onDelete={
+            onDelete
+              ? () => onDelete(generation)
+              : undefined
+          }
+        />
+      </div>
 
       <div className="generation-card-content">
         <div className="generation-card-heading">
