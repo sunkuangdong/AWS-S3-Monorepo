@@ -66,6 +66,12 @@ export function ImageListPage({
               </p>
             )}
 
+            {viewModel.actionErrorMessage && (
+              <p className="error-message" role="alert">
+                {viewModel.actionErrorMessage}
+              </p>
+            )}
+
             <section
               className={
                 viewModel.isLoading
@@ -78,6 +84,17 @@ export function ImageListPage({
                 <ImageGenerationCard
                   key={generation.id}
                   generation={generation}
+                  isDownloading={
+                    viewModel.downloadingGenerationId
+                    === generation.id
+                  }
+                  isDeleting={
+                    viewModel.deletingGenerationId
+                    === generation.id
+                  }
+                  actionsDisabled={viewModel.isActionPending}
+                  onDownload={viewModel.downloadGeneration}
+                  onDelete={viewModel.deleteGeneration}
                 />
               ))}
             </section>

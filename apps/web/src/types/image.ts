@@ -144,6 +144,18 @@ export interface ImageGenerationListResponse {
 }
 
 /**
+ * 生成图片下载接口的响应。
+ * Response returned by the generated-image download endpoint.
+ */
+export interface ImageGenerationDownloadResponse {
+    /** 带下载响应头的临时 S3 地址。 / Temporary S3 URL configured for download. */
+    download_url: string
+
+    /** 下载地址有效时间（秒）。 / Download URL lifetime in seconds. */
+    expires_in: number
+}
+
+/**
  * FastAPI 返回的常见错误格式。
  * Common FastAPI error response shape.
  *

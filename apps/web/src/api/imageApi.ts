@@ -3,6 +3,7 @@ import type {
     AnalyzeImageResponse,
     ApiErrorResponse,
     CreateImageGenerationRequest,
+    ImageGenerationDownloadResponse,
     ImageGenerationListResponse,
     ImageGenerationResponse,
     PresignUploadRequest,
@@ -197,4 +198,47 @@ export async function listImageGenerations(
   }
 
   return (await response.json()) as ImageGenerationListResponse
+}
+
+/**
+ * 获取一张生成图片的临时下载地址。
+ * Get a temporary download URL for a generated image.
+ */
+export async function getImageGenerationDownload(
+  generationId: string,
+): Promise<ImageGenerationDownloadResponse> {
+  const encodedId = encodeURIComponent(generationId)
+  const response = await fetch(
+    `${apiBaseUrl}/api/v1/images/generations/${encodedId}/download`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response),
+    )
+  }
+
+  return (await response.json()) as ImageGenerationDownloadResponse
+}
+
+/**
+ * 软删除一条图片生成记录。
+ * Soft-delete one image-generation record.
+ */
+export async function deleteImageGeneration(
+  generationId: string,
+): Promise<void> {
+  const encodedId = encodeURIComponent(generationId)
+  const response = await fetch(
+    `${apiBaseUrl}/api/v1/images/generations/${encodedId}`,
+    {
+      method: 'DELETE',
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response),
+    )
+  }
 }

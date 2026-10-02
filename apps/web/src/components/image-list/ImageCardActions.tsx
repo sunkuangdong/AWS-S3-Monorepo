@@ -5,6 +5,7 @@ interface ImageCardActionsProps {
   canDownload: boolean
   isDownloading?: boolean
   isDeleting?: boolean
+  isDisabled?: boolean
   onDownload?: () => void
   onDelete?: () => void
 }
@@ -34,6 +35,7 @@ export function ImageCardActions({
   canDownload,
   isDownloading = false,
   isDeleting = false,
+  isDisabled = false,
   onDownload,
   onDelete,
 }: ImageCardActionsProps) {
@@ -45,6 +47,7 @@ export function ImageCardActions({
         onClick={onDownload}
         disabled={
           !canDownload
+          || isDisabled
           || isDownloading
           || !onDownload
         }
@@ -57,6 +60,7 @@ export function ImageCardActions({
       <DeleteGenerationDialog
         prompt={prompt}
         isDeleting={isDeleting}
+        isDisabled={isDisabled}
         onConfirm={onDelete}
       />
     </div>

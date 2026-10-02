@@ -10,6 +10,9 @@ export interface ImageListState {
   offset: number
   isLoading: boolean
   errorMessage: string
+  actionErrorMessage: string
+  downloadingGenerationId: string | null
+  deletingGenerationId: string | null
 }
 
 export type ImageListAction =
@@ -22,6 +25,20 @@ export type ImageListAction =
       type: 'loadFailed'
       payload: string
     }
+  | {
+      type: 'downloadStarted'
+      payload: string
+    }
+  | { type: 'downloadFinished' }
+  | {
+      type: 'deleteStarted'
+      payload: string
+    }
+  | { type: 'deleteFinished' }
+  | {
+      type: 'actionFailed'
+      payload: string
+    }
 
 export const initialImageListState: ImageListState = {
   items: [],
@@ -30,6 +47,9 @@ export const initialImageListState: ImageListState = {
   offset: 0,
   isLoading: true,
   errorMessage: '',
+  actionErrorMessage: '',
+  downloadingGenerationId: null,
+  deletingGenerationId: null,
 }
 
 /**
@@ -61,6 +81,40 @@ export function imageListReducer(
         ...state,
         isLoading: false,
         errorMessage: action.payload,
+      }
+
+    case 'downloadStarted':
+      return {
+        ...state,
+        actionErrorMessage: '',
+        downloadingGenerationId: action.payload,
+      }
+
+    case 'downloadFinished':
+      return {
+        ...state,
+        downloadingGenerationId: null,
+      }
+
+    case 'deleteStarted':
+      return {
+        ...state,
+        actionErrorMessage: '',
+        deletingGenerationId: action.payload,
+      }
+
+    case 'deleteFinished':
+      return {
+        ...state,
+        deletingGenerationId: null,
+      }
+
+    case 'actionFailed':
+      return {
+        ...state,
+        actionErrorMessage: action.payload,
+        downloadingGenerationId: null,
+        deletingGenerationId: null,
       }
   }
 }

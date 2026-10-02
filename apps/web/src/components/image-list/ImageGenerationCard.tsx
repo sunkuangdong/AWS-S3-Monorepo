@@ -7,6 +7,7 @@ interface ImageGenerationCardProps {
   generation: ImageGenerationResponse
   isDownloading?: boolean
   isDeleting?: boolean
+  actionsDisabled?: boolean
   onDownload?: (
     generation: ImageGenerationResponse,
   ) => void
@@ -35,6 +36,7 @@ export function ImageGenerationCard({
   generation,
   isDownloading = false,
   isDeleting = false,
+  actionsDisabled = false,
   onDownload,
   onDelete,
 }: ImageGenerationCardProps) {
@@ -79,6 +81,7 @@ export function ImageGenerationCard({
           }
           isDownloading={isDownloading}
           isDeleting={isDeleting}
+          isDisabled={actionsDisabled}
           onDownload={
             onDownload
               ? () => onDownload(generation)

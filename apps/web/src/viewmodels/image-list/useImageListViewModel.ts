@@ -5,7 +5,13 @@ import {
   useRef,
 } from 'react'
 
-import { listImageGenerations } from '../../api/imageApi'
+import {
+  deleteImageGeneration,
+  getImageGenerationDownload,
+  listImageGenerations,
+} from '../../api/imageApi'
+import type { ImageGenerationResponse } from '../../types/image'
+import { downloadFileFromUrl } from '../../utils/downloadFile'
 import {
   imageListReducer,
   initialImageListState,
@@ -14,10 +20,13 @@ import type { ImageListAction } from './imageListReducer'
 
 const pageSize = 20
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(
+  error: unknown,
+  fallbackMessage = '加载历史记录时发生未知错误。',
+): string {
   return error instanceof Error
     ? error.message
-    : '加载历史记录时发生未知错误。'
+    : fallbackMessage
 }
 
 /**
@@ -133,6 +142,85 @@ export function useImageListViewModel() {
     void loadPage(state.offset)
   }, [loadPage, state.offset])
 
+  const isActionPending =
+    state.downloadingGenerationId !== null
+    || state.deletingGenerationId !== null
+
+  const downloadGeneration = useCallback(
+    async (
+      generation: ImageGenerationResponse,
+    ): Promise<void> => {
+      if (isActionPending) {
+        return
+      }
+
+      dispatch({
+        type: 'downloadStarted',
+        payload: generation.id,
+      })
+
+      try {
+        const download = await getImageGenerationDownload(
+          generation.id,
+        )
+
+        downloadFileFromUrl(download.download_url)
+        dispatch({ type: 'downloadFinished' })
+      } catch (error) {
+        dispatch({
+          type: 'actionFailed',
+          payload: getErrorMessage(
+            error,
+            '下载图片时发生未知错误。',
+          ),
+        })
+      }
+    },
+    [isActionPending],
+  )
+
+  const deleteGeneration = useCallback(
+    async (
+      generation: ImageGenerationResponse,
+    ): Promise<void> => {
+      if (isActionPending) {
+        return
+      }
+
+      dispatch({
+        type: 'deleteStarted',
+        payload: generation.id,
+      })
+
+      try {
+        await deleteImageGeneration(generation.id)
+
+        const nextOffset =
+          state.items.length === 1 && state.offset > 0
+            ? Math.max(0, state.offset - state.limit)
+            : state.offset
+
+        await loadPage(nextOffset)
+        dispatch({ type: 'deleteFinished' })
+      } catch (error) {
+        dispatch({
+          type: 'actionFailed',
+          payload: getErrorMessage(
+            error,
+            '删除创作记录时发生未知错误。',
+          ),
+        })
+      }
+    },
+    [
+      isActionPending,
+      loadPage,
+      state.items.length,
+      state.limit,
+      state.offset,
+    ],
+  )
+
   return {
     ...state,
     currentPage,
@@ -142,5 +230,8 @@ export function useImageListViewModel() {
     goToPreviousPage,
     goToNextPage,
     refresh,
+    isActionPending,
+    downloadGeneration,
+    deleteGeneration,
   }
 }

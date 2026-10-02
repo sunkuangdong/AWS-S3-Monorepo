@@ -3,6 +3,7 @@ import { AlertDialog } from 'radix-ui'
 interface DeleteGenerationDialogProps {
   prompt: string
   isDeleting: boolean
+  isDisabled?: boolean
   onConfirm?: () => void
 }
 
@@ -30,6 +31,7 @@ function TrashIcon() {
 export function DeleteGenerationDialog({
   prompt,
   isDeleting,
+  isDisabled = false,
   onConfirm,
 }: DeleteGenerationDialogProps) {
   return (
@@ -38,7 +40,7 @@ export function DeleteGenerationDialog({
         <button
           className="image-action-button is-delete"
           type="button"
-          disabled={isDeleting || !onConfirm}
+          disabled={isDisabled || isDeleting || !onConfirm}
           aria-label="删除这条创作记录"
         >
           <TrashIcon />
