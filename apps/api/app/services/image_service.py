@@ -22,6 +22,7 @@ from app.schemas.image import (
 )
 from app.schemas.image_generation import (
     CreateImageGenerationRequest,
+    ImageGenerationDownloadResponse,
     ImageGenerationListResponse,
     ImageGenerationResponse,
 )
@@ -328,7 +329,6 @@ class ImageService:
                 "object_key 中不能包含 '..'"
             )
 
-
     async def analyze_image(
         self,
         request: AnalyzeImageRequest,
@@ -424,3 +424,77 @@ class ImageService:
         return self._build_generation_response(
             generation
         )
+
+    async def get_generation_download(
+        self,
+        generation_id: UUID,
+    ) -> ImageGenerationDownloadResponse | None:
+        """
+        获取生成图片的临时下载地址。
+
+        Get a temporary download URL for a generated image.
+
+        找不到有效记录或图片尚不可下载时返回 None。
+        Return None when no active downloadable image exists.
+        """
+        generation = (
+            await self.generation_repository.get_active_by_id(
+                generation_id
+            )
+        )
+
+        if generation is None:
+            return None
+
+        if (
+            generation.status != "completed"
+            or generation.output_object_key is None
+        ):
+            return None
+
+        download_url = (
+            self.storage_client.create_presigned_download_url(
+                object_key=generation.output_object_key,
+            )
+        )
+
+        return ImageGenerationDownloadResponse(
+            download_url=download_url,
+            expires_in=(
+                self.storage_client.settings.presigned_url_expires
+            ),
+        )
+
+    async def delete_generation(
+        self,
+        generation_id: UUID,
+    ) -> bool:
+        """
+        软删除一条图片生成记录。
+
+        Soft-delete an image-generation record.
+
+        找不到有效记录时返回 False。
+        Return False when no active record exists.
+        """
+        generation = (
+            await self.generation_repository.get_active_by_id(
+                generation_id
+            )
+        )
+
+        if generation is None:
+            return False
+
+        try:
+            await self.generation_repository.soft_delete(
+                generation
+            )
+
+            await self.generation_repository.commit()
+        except Exception:
+            await self.generation_repository.rollback()
+            raise
+
+        return True
+        
