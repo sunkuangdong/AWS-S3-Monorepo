@@ -117,3 +117,25 @@ class ImageGenerationListResponse(BaseModel):
     offset: int = Field(
         ge=0,
     )
+
+class ImageGenerationDownloadResponse(BaseModel):
+    """
+    生成图片下载信息。
+
+    Download information for a generated image.
+    """
+    download_url: str = Field(
+        min_length=1,
+        description=(
+            "带下载响应头的 S3 临时地址 / "
+            "Temporary S3 URL configured for download"
+        ),
+    )
+
+    expires_in: int = Field(
+        gt=0,
+        description=(
+            "下载地址有效时间（秒） / "
+            "Download URL lifetime in seconds"
+        ),
+    )

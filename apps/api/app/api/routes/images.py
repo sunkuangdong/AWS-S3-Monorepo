@@ -7,6 +7,7 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    Response,
     status,
 )
 
@@ -25,6 +26,7 @@ from app.schemas.image import (
 )
 from app.schemas.image_generation import (
     CreateImageGenerationRequest,
+    ImageGenerationDownloadResponse,
     ImageGenerationListResponse,
     ImageGenerationResponse,
 )
@@ -252,3 +254,65 @@ async def create_image_generation(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="暂时无法读取或保存图片",
         ) from error
+
+@router.get(
+    "/generations/{generation_id}/download",
+    response_model=ImageGenerationDownloadResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_image_generation_download(
+    generation_id: UUID,
+    image_service: ImageServiceDependency,
+) -> ImageGenerationDownloadResponse:
+    """
+    获取生成图片的临时下载地址。
+
+    Get a temporary download URL for a generated image.
+    """
+    try:
+        download = await image_service.get_generation_download(
+            generation_id
+        )
+    except StorageError as error:
+        logger.exception("生成图片下载地址失败")
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="暂时无法创建图片下载地址",
+        ) from error
+
+    if download is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="可下载的图片生成记录不存在",
+        )
+
+    return download
+
+@router.delete(
+    "/generations/{generation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+async def delete_image_generation(
+    generation_id: UUID,
+    image_service: ImageServiceDependency,
+) -> Response:
+    """
+    软删除图片生成记录。
+
+    Soft-delete an image-generation record.
+    """
+    deleted = await image_service.delete_generation(
+        generation_id
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="图片生成记录不存在",
+        )
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )
