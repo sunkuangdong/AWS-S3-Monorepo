@@ -455,7 +455,7 @@ class ImageService:
             return None
 
         download_url = (
-            self.storage_client.create_presigned_download_url(
+            self.storage_client.create_presigned_attachment_url(
                 object_key=generation.output_object_key,
             )
         )

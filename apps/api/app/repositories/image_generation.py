@@ -141,6 +141,9 @@ class ImageGenerationRepository:
             .order_by(ImageGeneration.created_at.desc())
             .offset(offset)
             .limit(limit)
+            .where(
+                ImageGeneration.deleted_at.is_(None)
+            )
         )
 
         result = await self.session.scalars(statement)

@@ -314,3 +314,37 @@ class S3StorageClient:
             ) from error
 
         return object_key
+
+    def create_presigned_attachment_url(
+        self,
+        *,
+        object_key: str,
+    ) -> str:
+        """
+        生成强制下载 S3 对象的临时地址。
+
+        Generate a temporary S3 URL that downloads the object
+        as an attachment.
+        """
+        file_name = Path(object_key).name
+
+        try:
+            return self.client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={
+                    "Bucket": self.settings.s3_bucket,
+                    "Key": object_key,
+                    "ResponseContentDisposition": (
+                        f'attachment; filename="{file_name}"'
+                    ),
+                },
+                ExpiresIn=self.settings.presigned_url_expires,
+            )
+        except (
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+        ) as error:
+            raise StorageError(
+            "生成 S3 临时下载地址失败"
+        ) from error
