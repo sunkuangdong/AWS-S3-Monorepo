@@ -1,8 +1,8 @@
 # Web Application / 前端应用
 
-This directory contains the React, TypeScript, and Vite frontend for the AI image analysis platform.
+This directory contains the React, TypeScript, and Vite frontend for the AI image creation platform.
 
-此目录包含 AI 图片分析平台的 React、TypeScript 和 Vite 前端。
+此目录包含 AI 图片创作平台的 React、TypeScript 和 Vite 前端。
 
 For setup, architecture, environment variables, and run instructions, see:
 

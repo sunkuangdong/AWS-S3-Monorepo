@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter @ai-image/web dev",
     "build": "pnpm --filter @ai-image/web build",
-    "lint": "pnpm --filter @ai-image/web lint"
+    "lint": "pnpm --filter @ai-image/web lint",
+    "test": "pnpm --filter @ai-image/web test"
   }
 }
