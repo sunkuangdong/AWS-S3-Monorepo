@@ -27,6 +27,8 @@ jobs:
         run: python -m pytest apps/api/tests -q
       - name: Validate workflow evaluation dataset
         run: python -m evals.validation
+      - name: Validate frozen live smoke protocol
+        run: python -m evals.live_validation
       - name: Run offline workflow acceptance gate
         run: >-
           python -m evals.run_workflow

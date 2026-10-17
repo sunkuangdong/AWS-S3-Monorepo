@@ -1,0 +1,54 @@
+{
+  "protocol_version": "1.0.0",
+  "status": "frozen",
+  "frozen_date": "2026-10-17",
+  "git_tag": "live-smoke-v1.0.0",
+  "implementation_baseline_commit": "b6b0903198c7c1c2ca64de224cf54aef484c75bc",
+  "runner": {
+    "module": "evals.run_live_smoke",
+    "sequential": true,
+    "concurrency": 1,
+    "width": 1024,
+    "height": 1024,
+    "maximum_cost_usd": 0.3,
+    "timeout_seconds": 180.0,
+    "trace_wait_seconds": 30
+  },
+  "dataset": {
+    "path": "evals/datasets/live_smoke_v1.jsonl",
+    "sha256": "a3ed9c1dd51b04495fb4c72b8b8fdc9a150a9f27d5a5678067d22866f15b318c",
+    "case_count": 4,
+    "case_ids": [
+      "live-smoke-001",
+      "live-smoke-002",
+      "live-smoke-003",
+      "live-smoke-004"
+    ]
+  },
+  "expected_models": {
+    "text_to_image": [
+      "gpt-image-2.5-sunburst"
+    ],
+    "image_to_image": [
+      "gpt-4.1-mini",
+      "gpt-image-2.5-sunburst"
+    ]
+  },
+  "evidence": {
+    "path": "evals/evidence/live_smoke_v1_summary.json",
+    "sha256": "a14f39fc7b6769da22a2c60258cc793e2abf5760953e4646517c0e09d282ffdd"
+  },
+  "required_acceptance_gates": [
+    "all_cases_executed",
+    "all_api_requests_complete",
+    "database_state_is_consistent",
+    "s3_outputs_are_retrievable",
+    "langfuse_traces_are_complete",
+    "trace_io_is_private",
+    "models_match_protocol",
+    "all_costs_are_measured",
+    "within_cost_cap",
+    "run_was_not_stopped",
+    "overall"
+  ]
+}

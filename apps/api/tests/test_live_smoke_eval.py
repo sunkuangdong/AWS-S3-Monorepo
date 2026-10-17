@@ -1,11 +1,20 @@
 import json
 
 import httpx
-from evals.live_smoke import build_live_summary, load_live_cases
+from evals.live_smoke import (
+    build_live_summary,
+    load_live_cases,
+    validate_frozen_live_protocol,
+)
 from evals.run_live_smoke import DEFAULT_DATASET, _run_case
 
 
 def _successful_run(case_id: str, generation_type: str, cost: float) -> dict:
+    model_names = (
+        ["gpt-image-2.5-sunburst"]
+        if generation_type == "text_to_image"
+        else ["gpt-4.1-mini", "gpt-image-2.5-sunburst"]
+    )
     return {
         "case_id": case_id,
         "generation_type": generation_type,
@@ -16,13 +25,22 @@ def _successful_run(case_id: str, generation_type: str, cost: float) -> dict:
         "privacy_safe": True,
         "cost_measured": True,
         "total_cost_usd": cost,
+        "model_names": model_names,
         "latency_ms": 1_000.0,
     }
 
 
 def test_live_smoke_dataset_contains_four_balanced_safe_cases() -> None:
+    manifest = validate_frozen_live_protocol(
+        DEFAULT_DATASET,
+        maximum_cost_usd=0.30,
+        timeout_seconds=180.0,
+        trace_wait_seconds=30,
+    )
     cases = load_live_cases(DEFAULT_DATASET)
 
+    assert manifest["protocol_version"] == "1.0.0"
+    assert manifest["status"] == "frozen"
     assert len(cases) == 4
     assert sum(case.generation_type == "text_to_image" for case in cases) == 2
     assert sum(case.generation_type == "image_to_image" for case in cases) == 2

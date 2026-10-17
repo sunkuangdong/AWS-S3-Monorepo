@@ -56,4 +56,4 @@ See [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md) for metric definitions and 
 
 ## Paid live integration smoke
 
-The candidate [`LIVE_SMOKE_PROTOCOL.md`](LIVE_SMOKE_PROTOCOL.md) validates the real PostgreSQL, S3, OpenAI, and Langfuse chain with two text-generation and two image-edit cases. It has a separate dataset and version so it cannot alter frozen offline v1.0.0. Run its free preflight before explicitly authorizing the paid cases; generated artifacts remain ignored under `evals/results/`.
+Frozen [`LIVE_SMOKE_PROTOCOL.md`](LIVE_SMOKE_PROTOCOL.md) v1.0.0 validates the real PostgreSQL, S3, OpenAI, and Langfuse chain with two text-generation and two image-edit cases. It has a separate dataset and version so it cannot alter frozen offline v1.0.0. Run its free preflight before explicitly authorizing the paid cases; generated raw artifacts remain ignored under `evals/results/`, while a privacy-safe aggregate is tracked under `evals/evidence/`.

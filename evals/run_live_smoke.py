@@ -24,6 +24,7 @@ from evals.live_smoke import (
     LiveSmokeCase,
     build_live_summary,
     load_live_cases,
+    validate_frozen_live_protocol,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -455,6 +456,7 @@ def _render_report(summary: dict[str, Any], config: dict[str, Any]) -> str:
             f"- S3 output retrieval: {score['s3_output_retrieval_rate'] or 0:.1%}",
             f"- Langfuse trace completeness: {score['langfuse_trace_completeness_rate'] or 0:.1%}",
             f"- Trace privacy compliance: {score['trace_privacy_compliance_rate'] or 0:.1%}",
+            f"- Frozen-model compliance: {score['model_compliance_rate'] or 0:.1%}",
             f"- Measured model cost: ${cost['total']:.6f} / ${cost['maximum']:.2f}",
             (
                 f"- End-to-end latency P50/P95: "
@@ -521,6 +523,12 @@ def main() -> int:
 
     dataset_path = args.dataset.resolve()
     cases = load_live_cases(dataset_path)
+    manifest = validate_frozen_live_protocol(
+        dataset_path,
+        maximum_cost_usd=args.maximum_cost_usd,
+        timeout_seconds=args.timeout_seconds,
+        trace_wait_seconds=args.trace_wait_seconds,
+    )
     api_base_url = _validated_api_base_url(args.api_base_url)
     environment = os.getenv("LANGFUSE_ENVIRONMENT", "local-evaluation")
     trace_reader = TraceReader(
@@ -611,6 +619,8 @@ def main() -> int:
     config = {
         "protocol_version": LIVE_PROTOCOL_VERSION,
         "protocol_status": LIVE_PROTOCOL_STATUS,
+        "protocol_git_tag": manifest["git_tag"],
+        "implementation_baseline_commit": manifest["implementation_baseline_commit"],
         "run_id": run_id,
         "run_at": datetime.now(UTC).isoformat(),
         "git_commit": _git_value("rev-parse", "HEAD"),
@@ -620,6 +630,10 @@ def main() -> int:
         "timeout_seconds": args.timeout_seconds,
         "trace_wait_seconds": args.trace_wait_seconds,
         "maximum_cost_usd": args.maximum_cost_usd,
+        "sequential": True,
+        "concurrency": 1,
+        "width": 1024,
+        "height": 1024,
         "reference_object_configured": True,
         "dataset": {
             "path": str(dataset_path.relative_to(PROJECT_ROOT)),

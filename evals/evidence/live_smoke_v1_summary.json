@@ -2,6 +2,7 @@
   "evidence_type": "privacy_safe_aggregate",
   "run_at": "2026-10-17T22:42:29.634657+00:00",
   "candidate_base_commit": "ed1e14903cde5ebec4603d3ffbf8179fe7799870",
+  "implementation_baseline_commit": "b6b0903198c7c1c2ca64de224cf54aef484c75bc",
   "source_worktree_dirty": true,
   "dataset": {
     "path": "evals/datasets/live_smoke_v1.jsonl",
