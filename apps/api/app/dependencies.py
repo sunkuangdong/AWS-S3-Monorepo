@@ -78,24 +78,6 @@ def get_openai_vision_client() -> OpenAIVisionClient:
         settings=get_settings()
     )
 
-def get_image_service(
-    generation_repository: ImageGenerationRepositoryDependency,
-) -> ImageService:
-    """
-    为当前请求创建图片业务服务。
-    Create the image service for the current request.
-
-    S3 和 OpenAI 客户端可以长期复用，
-    Repository 则跟随当前请求的数据库 Session。
-    The S3 and OpenAI clients can be reused, while the repository
-    follows the database session of the current request.
-    """
-    return ImageService(
-        storage_client=get_s3_storage_client(),
-        vision_client=get_openai_vision_client(),
-        image_generation_client=get_openai_image_generation_client(),
-        generation_repository=generation_repository,
-    )
 
 @lru_cache(maxsize=1)
 def get_openai_image_generation_client() -> OpenAIImageGenerationClient:
@@ -108,4 +90,46 @@ def get_openai_image_generation_client() -> OpenAIImageGenerationClient:
     """
     return OpenAIImageGenerationClient(
         settings=get_settings(),
+    )
+
+
+# 外部服务客户端通过 FastAPI 依赖注入传给 ImageService。
+# Inject external-service clients through FastAPI so evaluation applications can
+# replace only cloud dependencies while retaining the real API, service, and database.
+StorageClientDependency = Annotated[
+    S3StorageClient,
+    Depends(get_s3_storage_client),
+]
+
+VisionClientDependency = Annotated[
+    OpenAIVisionClient,
+    Depends(get_openai_vision_client),
+]
+
+ImageGenerationClientDependency = Annotated[
+    OpenAIImageGenerationClient,
+    Depends(get_openai_image_generation_client),
+]
+
+
+def get_image_service(
+    generation_repository: ImageGenerationRepositoryDependency,
+    storage_client: StorageClientDependency,
+    vision_client: VisionClientDependency,
+    image_generation_client: ImageGenerationClientDependency,
+) -> ImageService:
+    """
+    为当前请求创建图片业务服务。
+    Create the image service for the current request.
+
+    S3 和 OpenAI 客户端可以长期复用，
+    Repository 则跟随当前请求的数据库 Session。
+    The S3 and OpenAI clients can be reused, while the repository
+    follows the database session of the current request.
+    """
+    return ImageService(
+        storage_client=storage_client,
+        vision_client=vision_client,
+        image_generation_client=image_generation_client,
+        generation_repository=generation_repository,
     )
