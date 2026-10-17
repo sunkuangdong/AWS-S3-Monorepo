@@ -57,3 +57,13 @@ See [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md) for metric definitions and 
 ## Paid live integration smoke
 
 Frozen [`LIVE_SMOKE_PROTOCOL.md`](LIVE_SMOKE_PROTOCOL.md) v1.0.0 validates the real PostgreSQL, S3, OpenAI, and Langfuse chain with two text-generation and two image-edit cases. It has a separate dataset and version so it cannot alter frozen offline v1.0.0. Run its free preflight before explicitly authorizing the paid cases; generated raw artifacts remain ignored under `evals/results/`, while a privacy-safe aggregate is tracked under `evals/evidence/`.
+
+## Deterministic load evaluation
+
+Candidate [`LOAD_PROTOCOL.md`](LOAD_PROTOCOL.md) v1.0.0 measures the dedicated
+one-worker FastAPI application and real PostgreSQL path at concurrency
+`1,4,8,16`. OpenAI, S3, and Langfuse are disabled and replaced with bounded
+deterministic stubs, so the run makes no paid cloud calls. The tracked
+`load_protocol_v1.json` manifest locks the candidate parameters, stub delays,
+safety properties, and acceptance gates. Use `--allow-protocol-deviation` only
+for clearly marked exploratory capacity runs.

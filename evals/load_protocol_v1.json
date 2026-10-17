@@ -1,0 +1,66 @@
+{
+  "protocol_version": "1.0.0",
+  "status": "candidate",
+  "review_date": "2026-10-17",
+  "runner": {
+    "module": "evals.run_load",
+    "application_module": "evals.load_app:app",
+    "compose_profile": "evaluation",
+    "compose_service": "load-api",
+    "uvicorn_workers": 1,
+    "concurrencies": [
+      1,
+      4,
+      8,
+      16
+    ],
+    "requests_per_tier": 40,
+    "warmup_requests_per_tier": 5,
+    "timeout_seconds": 30.0
+  },
+  "workload": {
+    "generation_type": "text_to_image",
+    "width": 1024,
+    "height": 1024,
+    "post_latency_scope": "POST /api/v1/images/generations only",
+    "verification_scope": "API readback backed by real PostgreSQL after each batch"
+  },
+  "stub_delays_ms": {
+    "storage": 0,
+    "vision": 50,
+    "image_generation": 250
+  },
+  "safety": {
+    "cloud_calls_enabled": false,
+    "langfuse_tracing_enabled": false,
+    "real_postgresql_enabled": true,
+    "expected_cost_usd": 0.0
+  },
+  "metrics": {
+    "latency_percentiles": "nearest-rank",
+    "throughput_unit": "completed POST requests per second",
+    "baseline_concurrency": 1,
+    "fixed_performance_thresholds": false
+  },
+  "required_acceptance_gates": [
+    "preflight_passed",
+    "all_warmups_complete",
+    "all_requests_executed",
+    "all_api_requests_complete",
+    "no_server_errors",
+    "database_state_consistent",
+    "all_load_records_found",
+    "all_load_records_completed",
+    "no_unexpected_pending_records",
+    "stub_calls_match_workload",
+    "no_cloud_calls",
+    "run_was_not_stopped",
+    "overall"
+  ],
+  "freeze": {
+    "git_tag": null,
+    "implementation_baseline_commit": null,
+    "evidence_path": null,
+    "evidence_sha256": null
+  }
+}

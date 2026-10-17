@@ -21,6 +21,7 @@ from app.main import (
 )
 from fastapi import FastAPI
 
+from evals.load_protocol import LOAD_PROTOCOL_STATUS, LOAD_PROTOCOL_VERSION
 from evals.load_stubs import (
     DeterministicImageGenerationStub,
     DeterministicStorageStub,
@@ -40,7 +41,7 @@ def _non_negative_delay(name: str, default: int) -> int:
 
 
 storage_stub = DeterministicStorageStub(
-    delay_ms=_non_negative_delay("LOAD_STUB_STORAGE_DELAY_MS", 10),
+    delay_ms=_non_negative_delay("LOAD_STUB_STORAGE_DELAY_MS", 0),
 )
 vision_stub = DeterministicVisionStub(
     delay_ms=_non_negative_delay("LOAD_STUB_VISION_DELAY_MS", 50),
@@ -51,7 +52,7 @@ image_generation_stub = DeterministicImageGenerationStub(
 
 app = FastAPI(
     title="AI Image API - Load Evaluation",
-    version="load-v1-candidate",
+    version=f"{LOAD_PROTOCOL_VERSION}-{LOAD_PROTOCOL_STATUS}",
     lifespan=lifespan,
 )
 app.middleware("http")(request_observability)
@@ -83,6 +84,8 @@ def load_test_status() -> dict[str, object]:
     """Expose a bounded preflight signal proving that cloud clients are disabled."""
     return {
         "load_test": True,
+        "protocol_version": LOAD_PROTOCOL_VERSION,
+        "protocol_status": LOAD_PROTOCOL_STATUS,
         "cloud_calls_enabled": False,
         "langfuse_tracing_enabled": False,
         "real_postgresql_enabled": True,
