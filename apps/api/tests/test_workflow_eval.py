@@ -1,12 +1,17 @@
+import json
 from pathlib import Path
 
 from evals.dataset import load_cases
+from evals.protocol import PROTOCOL_STATUS, PROTOCOL_VERSION, validate_frozen_protocol
 from evals.run_workflow import DEFAULT_DATASET, execute
 
 
 def test_workflow_smoke_dataset_is_valid() -> None:
+    manifest = validate_frozen_protocol(DEFAULT_DATASET)
     cases = load_cases(DEFAULT_DATASET)
 
+    assert manifest["protocol_version"] == PROTOCOL_VERSION == "1.0.0"
+    assert manifest["status"] == PROTOCOL_STATUS == "frozen"
     assert len(cases) == 12
     assert len({case.case_id for case in cases}) == len(cases)
     assert {case.category for case in cases} == {
@@ -51,3 +56,6 @@ def test_offline_workflow_runner_verifies_completion_compensation(
     assert (output_dir / "summary.json").is_file()
     assert (output_dir / "config.json").is_file()
     assert (output_dir / "report.md").is_file()
+    config = json.loads((output_dir / "config.json").read_text(encoding="utf-8"))
+    assert config["protocol_version"] == "1.0.0"
+    assert config["protocol_status"] == "frozen"

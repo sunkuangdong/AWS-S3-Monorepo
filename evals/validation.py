@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from evals.dataset import dataset_sha256, load_cases
+from evals.protocol import validate_frozen_protocol
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET = PROJECT_ROOT / "evals/datasets/workflow_smoke_v1.jsonl"
@@ -20,9 +21,19 @@ def main() -> int:
     )
     args = parser.parse_args()
     path = args.dataset.resolve()
+    manifest = validate_frozen_protocol(path)
     cases = load_cases(path)
     result = {
         "valid": True,
+        "protocol": {
+            "version": manifest["protocol_version"],
+            "status": manifest["status"],
+            "frozen_date": manifest["frozen_date"],
+            "git_tag": manifest["git_tag"],
+            "implementation_baseline_commit": manifest[
+                "implementation_baseline_commit"
+            ],
+        },
         "path": str(path.relative_to(PROJECT_ROOT)),
         "case_count": len(cases),
         "sha256": dataset_sha256(path),

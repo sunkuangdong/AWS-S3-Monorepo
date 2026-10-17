@@ -1,7 +1,18 @@
 # Image Workflow Evaluation Protocol
 
-Status: **DRAFT**  
-Protocol version: `1.0.0-draft`
+Status: **FROZEN**
+
+Protocol version: `1.0.0`
+
+## Frozen identity
+
+- Frozen on: `2026-10-17`
+- Canonical Git tag: `workflow-eval-v1.0.0`
+- Passing implementation baseline: `e1972c904579c960372d34053653834cf31ff362`
+- Dataset SHA-256: `b17df2e5c7711fa7abd4389ca14bcfb756854d19eb4f868b1176819604d4c464`
+- Machine-readable manifest: `evals/frozen_protocol_v1.json`
+
+The tag is the canonical code snapshot. The manifest locks the dataset path, digest, ordered case IDs, runner mode, concurrency, and required gates. Any change to labels, cases, metrics, scoring, or acceptance rules must use a new protocol version and a new manifest; v1.0.0 is immutable.
 
 ## Purpose
 
@@ -18,7 +29,7 @@ Each run records the exact SHA-256 digest and case IDs of the JSONL dataset. The
 - a failure while creating the response URL after a successful commit;
 - an invalid S3 object key rejected before persistence.
 
-The database-completion case now verifies that a failed completion commit triggers transaction rollback, compensating S3 deletion, and persistence of the task as `failed`. The protocol remains DRAFT until the repository is clean and the final dataset hash is recorded in a release commit.
+The database-completion case verifies that a failed completion commit triggers transaction rollback, compensating S3 deletion, and persistence of the task as `failed`.
 
 ## Isolation
 

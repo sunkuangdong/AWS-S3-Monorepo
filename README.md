@@ -154,6 +154,8 @@ API tests mock S3 and OpenAI, so they require no cloud credentials and incur no 
 
 The deterministic workflow harness runs the real `ImageService` orchestration against in-memory PostgreSQL, S3, OpenAI Vision, and OpenAI Images substitutes. It measures normal-path completion, injected-failure containment, database/object consistency, orphaned outputs, and concurrency without cloud calls or fees.
 
+Evaluation protocol `1.0.0` is frozen at tag `workflow-eval-v1.0.0`; the tracked manifest locks the dataset hash, ordered case IDs, and acceptance gates.
+
 ```bash
 .venv/bin/python -m evals.validation
 .venv/bin/python -m evals.run_workflow \

@@ -29,11 +29,16 @@ from app.schemas.image_generation import (
 from app.services.image_service import ImageService
 
 from evals.dataset import WorkflowCase, dataset_sha256, load_cases
+from evals.protocol import (
+    PROTOCOL_STATUS,
+    PROTOCOL_VERSION,
+    REQUIRED_ACCEPTANCE_GATES,
+    validate_frozen_protocol,
+)
 from evals.scoring import build_summary
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET = PROJECT_ROOT / "evals/datasets/workflow_smoke_v1.jsonl"
-PROTOCOL_VERSION = "1.0.0-draft"
 
 os.environ["LANGFUSE_TRACING_ENABLED"] = "false"
 
@@ -408,6 +413,7 @@ def _render_report(summary: dict[str, Any], config: dict[str, Any]) -> str:
             "# Offline Image Workflow Evaluation",
             "",
             f"- Protocol: `{config['protocol_version']}`",
+            f"- Protocol status: `{config['protocol_status']}`",
             f"- Dataset: `{config['dataset']['path']}`",
             f"- Dataset SHA-256: `{config['dataset']['sha256']}`",
             f"- Cases: {summary['run_count']}",
@@ -450,6 +456,7 @@ def execute(
     output_dir: Path,
     concurrency: int,
 ) -> dict[str, Any]:
+    manifest = validate_frozen_protocol(dataset_path, concurrency=concurrency)
     cases = load_cases(dataset_path)
     runs, max_in_flight = asyncio.run(run_cases(cases, concurrency=concurrency))
     summary = build_summary(
@@ -457,9 +464,18 @@ def execute(
         requested_concurrency=concurrency,
         max_in_flight=max_in_flight,
     )
+    actual_gate_names = tuple(summary["acceptance_gates"])
+    if actual_gate_names != REQUIRED_ACCEPTANCE_GATES:
+        raise ValueError(
+            "runner acceptance gates drifted from frozen protocol: "
+            f"expected {REQUIRED_ACCEPTANCE_GATES}, got {actual_gate_names}"
+        )
     status = _git_value("status", "--porcelain")
     config = {
         "protocol_version": PROTOCOL_VERSION,
+        "protocol_status": PROTOCOL_STATUS,
+        "protocol_git_tag": manifest["git_tag"],
+        "implementation_baseline_commit": manifest["implementation_baseline_commit"],
         "run_at": datetime.now(UTC).isoformat(),
         "git_commit": _git_value("rev-parse", "HEAD"),
         "git_worktree_dirty": bool(status),

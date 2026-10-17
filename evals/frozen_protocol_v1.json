@@ -1,0 +1,42 @@
+{
+  "protocol_version": "1.0.0",
+  "status": "frozen",
+  "frozen_date": "2026-10-17",
+  "git_tag": "workflow-eval-v1.0.0",
+  "implementation_baseline_commit": "e1972c904579c960372d34053653834cf31ff362",
+  "runner": {
+    "module": "evals.run_workflow",
+    "offline": true,
+    "concurrency": 4
+  },
+  "dataset": {
+    "path": "evals/datasets/workflow_smoke_v1.jsonl",
+    "sha256": "b17df2e5c7711fa7abd4389ca14bcfb756854d19eb4f868b1176819604d4c464",
+    "case_count": 12,
+    "case_ids": [
+      "workflow-smoke-001",
+      "workflow-smoke-002",
+      "workflow-smoke-003",
+      "workflow-smoke-004",
+      "workflow-smoke-005",
+      "workflow-smoke-006",
+      "workflow-smoke-007",
+      "workflow-smoke-008",
+      "workflow-smoke-009",
+      "workflow-smoke-010",
+      "workflow-smoke-011",
+      "workflow-smoke-012"
+    ]
+  },
+  "required_acceptance_gates": [
+    "all_cases_match_labels",
+    "normal_paths_complete",
+    "external_failures_are_contained",
+    "invalid_inputs_are_rejected",
+    "database_completion_failures_are_compensated",
+    "all_terminal_states_are_consistent",
+    "no_orphan_outputs",
+    "no_unexpected_pending_records",
+    "overall"
+  ]
+}
