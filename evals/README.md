@@ -60,10 +60,10 @@ Frozen [`LIVE_SMOKE_PROTOCOL.md`](LIVE_SMOKE_PROTOCOL.md) v1.0.0 validates the r
 
 ## Deterministic load evaluation
 
-Candidate [`LOAD_PROTOCOL.md`](LOAD_PROTOCOL.md) v1.0.0 measures the dedicated
+Frozen [`LOAD_PROTOCOL.md`](LOAD_PROTOCOL.md) v1.0.0 measures the dedicated
 one-worker FastAPI application and real PostgreSQL path at concurrency
 `1,4,8,16`. OpenAI, S3, and Langfuse are disabled and replaced with bounded
 deterministic stubs, so the run makes no paid cloud calls. The tracked
-`load_protocol_v1.json` manifest locks the candidate parameters, stub delays,
+`load_protocol_v1.json` manifest locks the parameters, stub delays,
 safety properties, and acceptance gates. Use `--allow-protocol-deviation` only
 for clearly marked exploratory capacity runs.

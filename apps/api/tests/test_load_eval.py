@@ -21,7 +21,7 @@ def _stub_status() -> dict[str, Any]:
     return {
         "load_test": True,
         "protocol_version": "1.0.0",
-        "protocol_status": "candidate",
+        "protocol_status": "frozen",
         "cloud_calls_enabled": False,
         "langfuse_tracing_enabled": False,
         "real_postgresql_enabled": True,
@@ -59,7 +59,7 @@ def test_load_runner_accepts_ordered_positive_concurrency_tiers() -> None:
     assert parse_concurrencies("1,4,8,16") == [1, 4, 8, 16]
 
 
-def test_load_protocol_locks_candidate_parameters_and_gates() -> None:
+def test_load_protocol_locks_frozen_parameters_evidence_and_gates() -> None:
     manifest = validate_load_protocol(
         concurrencies=[1, 4, 8, 16],
         requests_per_tier=40,
@@ -68,7 +68,17 @@ def test_load_protocol_locks_candidate_parameters_and_gates() -> None:
     )
 
     assert manifest["protocol_version"] == LOAD_PROTOCOL_VERSION == "1.0.0"
-    assert manifest["status"] == LOAD_PROTOCOL_STATUS == "candidate"
+    assert manifest["status"] == LOAD_PROTOCOL_STATUS == "frozen"
+    assert manifest["freeze"] == {
+        "git_tag": "load-eval-v1.0.0",
+        "implementation_baseline_commit": (
+            "0d917ef6cfb1304b37fff37df153e918ad8134f5"
+        ),
+        "evidence_path": "evals/evidence/load_v1_summary.json",
+        "evidence_sha256": (
+            "8449d2daa3d56d3f070cb7ce65360965e32f56a7b09e88c33442fc7e84175841"
+        ),
+    }
     assert manifest["required_acceptance_gates"] == list(
         REQUIRED_ACCEPTANCE_GATES
     )

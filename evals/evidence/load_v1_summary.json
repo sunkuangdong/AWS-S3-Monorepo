@@ -1,0 +1,137 @@
+{
+  "evidence_type": "privacy_safe_aggregate",
+  "run_at": "2026-10-17T23:16:14.128768+00:00",
+  "source_result": "20261017T231614Z_load_v1",
+  "source_protocol_status": "candidate",
+  "protocol_version": "1.0.0",
+  "implementation_baseline_commit": "0d917ef6cfb1304b37fff37df153e918ad8134f5",
+  "source_worktree_dirty": false,
+  "environment": {
+    "application": "evals.load_app:app",
+    "uvicorn_workers": 1,
+    "real_postgresql": true,
+    "cloud_calls": false,
+    "langfuse_tracing": false,
+    "stub_delays_ms": {
+      "storage": 0,
+      "vision": 50,
+      "image_generation": 250
+    }
+  },
+  "workload": {
+    "concurrencies": [
+      1,
+      4,
+      8,
+      16
+    ],
+    "requests_per_tier": 40,
+    "warmup_requests_per_tier": 5,
+    "timeout_seconds": 30.0,
+    "measured_count": 160,
+    "warmup_count": 20
+  },
+  "result": {
+    "stopped_reason": null,
+    "cost_usd": 0.0,
+    "overall_passed": true,
+    "api_success_rate": 1.0,
+    "database_consistency_rate": 1.0,
+    "server_error_count": 0,
+    "transport_error_count": 0,
+    "duplicate_request_id_count": 0,
+    "duplicate_generation_id_count": 0
+  },
+  "tiers": [
+    {
+      "concurrency": 1,
+      "request_count": 40,
+      "throughput_rps": 3.707,
+      "speedup_vs_concurrency_1": 1.0,
+      "scaling_efficiency": 1.0,
+      "max_in_flight": 1,
+      "latency_ms": {
+        "mean": 269.613,
+        "p50_nearest_rank": 270.655,
+        "p95_nearest_rank": 274.261,
+        "min": 260.614,
+        "max": 275.459
+      }
+    },
+    {
+      "concurrency": 4,
+      "request_count": 40,
+      "throughput_rps": 14.44,
+      "speedup_vs_concurrency_1": 3.895,
+      "scaling_efficiency": 0.974,
+      "max_in_flight": 4,
+      "latency_ms": {
+        "mean": 276.362,
+        "p50_nearest_rank": 276.66,
+        "p95_nearest_rank": 288.386,
+        "min": 261.146,
+        "max": 294.646
+      }
+    },
+    {
+      "concurrency": 8,
+      "request_count": 40,
+      "throughput_rps": 26.695,
+      "speedup_vs_concurrency_1": 7.201,
+      "scaling_efficiency": 0.9,
+      "max_in_flight": 8,
+      "latency_ms": {
+        "mean": 298.229,
+        "p50_nearest_rank": 298.385,
+        "p95_nearest_rank": 314.978,
+        "min": 279.159,
+        "max": 320.684
+      }
+    },
+    {
+      "concurrency": 16,
+      "request_count": 40,
+      "throughput_rps": 42.144,
+      "speedup_vs_concurrency_1": 11.368,
+      "scaling_efficiency": 0.711,
+      "max_in_flight": 16,
+      "latency_ms": {
+        "mean": 317.978,
+        "p50_nearest_rank": 321.818,
+        "p95_nearest_rank": 346.008,
+        "min": 274.873,
+        "max": 352.885
+      }
+    }
+  ],
+  "database": {
+    "expected_record_count": 180,
+    "record_count": 180,
+    "status_counts": {
+      "completed": 180
+    }
+  },
+  "stub_call_delta": {
+    "storage": {
+      "create_presigned_download_url": 360,
+      "upload_generated_image": 180
+    },
+    "vision": {},
+    "image_generation": {
+      "generate_image": 180
+    }
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes"
+    ]
+  },
+  "interpretation": "This run measures one local Uvicorn worker and real PostgreSQL with deterministic network-free provider stubs. It does not establish cloud-provider capacity, production availability, maximum throughput, or a production SLO."
+}

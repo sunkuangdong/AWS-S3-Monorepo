@@ -1,7 +1,7 @@
 {
   "protocol_version": "1.0.0",
-  "status": "candidate",
-  "review_date": "2026-10-17",
+  "status": "frozen",
+  "frozen_date": "2026-10-17",
   "runner": {
     "module": "evals.run_load",
     "application_module": "evals.load_app:app",
@@ -58,9 +58,9 @@
     "overall"
   ],
   "freeze": {
-    "git_tag": null,
-    "implementation_baseline_commit": null,
-    "evidence_path": null,
-    "evidence_sha256": null
+    "git_tag": "load-eval-v1.0.0",
+    "implementation_baseline_commit": "0d917ef6cfb1304b37fff37df153e918ad8134f5",
+    "evidence_path": "evals/evidence/load_v1_summary.json",
+    "evidence_sha256": "8449d2daa3d56d3f070cb7ce65360965e32f56a7b09e88c33442fc7e84175841"
   }
 }

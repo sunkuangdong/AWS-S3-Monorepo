@@ -6,10 +6,17 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evals.dataset import dataset_sha256
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LOAD_MANIFEST = PROJECT_ROOT / "evals/load_protocol_v1.json"
 LOAD_PROTOCOL_VERSION = "1.0.0"
-LOAD_PROTOCOL_STATUS = "candidate"
+LOAD_PROTOCOL_STATUS = "frozen"
+LOAD_GIT_TAG = "load-eval-v1.0.0"
+LOAD_IMPLEMENTATION_BASELINE_COMMIT = (
+    "0d917ef6cfb1304b37fff37df153e918ad8134f5"
+)
+LOAD_EVIDENCE = PROJECT_ROOT / "evals/evidence/load_v1_summary.json"
 
 REQUIRED_ACCEPTANCE_GATES = (
     "preflight_passed",
@@ -84,6 +91,35 @@ def validate_load_protocol(
         REQUIRED_ACCEPTANCE_GATES
     ):
         errors.append("acceptance gates do not match the load runner")
+
+    freeze = manifest.get("freeze", {})
+    if freeze.get("git_tag") != LOAD_GIT_TAG:
+        errors.append("Git tag does not match frozen load protocol v1")
+    if (
+        freeze.get("implementation_baseline_commit")
+        != LOAD_IMPLEMENTATION_BASELINE_COMMIT
+    ):
+        errors.append("implementation baseline does not match frozen load protocol v1")
+    expected_evidence_path = str(LOAD_EVIDENCE.relative_to(PROJECT_ROOT))
+    if freeze.get("evidence_path") != expected_evidence_path:
+        errors.append("evidence path does not match frozen load protocol v1")
+    if not LOAD_EVIDENCE.is_file():
+        errors.append("frozen aggregate load evidence is missing")
+    elif dataset_sha256(LOAD_EVIDENCE) != freeze.get("evidence_sha256"):
+        errors.append("aggregate load evidence SHA-256 does not match the manifest")
+    else:
+        evidence = json.loads(LOAD_EVIDENCE.read_text(encoding="utf-8"))
+        if evidence.get("protocol_version") != LOAD_PROTOCOL_VERSION:
+            errors.append("aggregate evidence protocol version does not match")
+        if (
+            evidence.get("implementation_baseline_commit")
+            != LOAD_IMPLEMENTATION_BASELINE_COMMIT
+        ):
+            errors.append("aggregate evidence baseline commit does not match")
+        if evidence.get("source_worktree_dirty") is not False:
+            errors.append("aggregate evidence must originate from a clean worktree")
+        if evidence.get("result", {}).get("overall_passed") is not True:
+            errors.append("aggregate evidence did not pass all acceptance gates")
 
     if not allow_parameter_deviation:
         expected_parameters = {

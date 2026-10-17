@@ -1,22 +1,27 @@
 # Deterministic Load Evaluation Protocol
 
-Status: **CANDIDATE — MANUAL REVIEW REQUIRED**
+Status: **FROZEN**
 
 Protocol version: `1.0.0`
 
-## Candidate identity
+## Frozen identity
 
-- Review date: `2026-10-17`
+- Frozen on: `2026-10-17`
+- Canonical Git tag: `load-eval-v1.0.0`
+- Passing implementation baseline: `0d917ef6cfb1304b37fff37df153e918ad8134f5`
 - Machine-readable manifest: `evals/load_protocol_v1.json`
+- Privacy-safe aggregate evidence: `evals/evidence/load_v1_summary.json`
 - Runner: `python -m evals.run_load`
 - Dedicated application: `evals.load_app:app`
 - Docker Compose profile/service: `evaluation` / `load-api`
-- Freeze tag: pending a clean, accepted reproduction run
 
-The manifest is the machine-readable source of truth for the candidate. The
+The tag is the canonical source snapshot and the manifest is the
+machine-readable source of truth. The
 runner rejects parameter, safety, acceptance-gate, or deterministic-latency
 drift. Exploratory runs must use `--allow-protocol-deviation`; their config is
 explicitly marked non-compliant and they cannot be used as frozen v1 evidence.
+Changes to the workload, environment, metrics, scoring, or acceptance gates
+require a new protocol version and tag.
 
 ## Purpose
 
@@ -82,7 +87,7 @@ counts. It does not retain prompts, presigned URLs, object keys, credentials,
 or image bytes. Because all paid providers are replaced by local stubs, the
 expected model and storage cost is `$0.00`.
 
-## Candidate reproduction
+## Reproduction
 
 Build and start the dedicated service from a committed, clean worktree:
 
@@ -129,11 +134,10 @@ jq '{
 }' "$RESULT_DIR/summary.json"
 ```
 
-Before freezing, manually confirm that `protocol_compliant` is `true`,
+A conforming reproduction must show that `protocol_compliant` is `true`,
 `git_worktree_dirty` is `false`, the count is 160 measured plus 20 warm-up,
 all 180 records are completed, cost is zero, and `acceptance_gates.overall` is
-`true`. Only then should aggregate evidence be tracked and its digest, baseline
-commit, and Git tag be added to the manifest.
+`true`.
 
 ## Exploratory capacity runs
 
