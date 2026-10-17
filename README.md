@@ -165,6 +165,8 @@ Evaluation protocol `1.0.0` is frozen at tag `workflow-eval-v1.0.0`; the tracked
 
 Generated evidence is written under ignored `evals/results/` directories. Metric definitions and acceptance rules are documented in [`evals/EVALUATION_PROTOCOL.md`](evals/EVALUATION_PROTOCOL.md). Fake-service latency is not production latency.
 
+The separately versioned candidate live smoke test verifies the real PostgreSQL, S3, OpenAI, and Langfuse integration under an explicit model-cost ceiling. See [`evals/LIVE_SMOKE_PROTOCOL.md`](evals/LIVE_SMOKE_PROTOCOL.md); it requires a free preflight and an explicit paid-call confirmation.
+
 ## Observability
 
 Every API response contains `X-Request-ID`. The API emits one JSON log entry per request with the request ID, method, path, status code, and duration. `/health` is a process liveness probe, while `/health/database` verifies PostgreSQL readiness.

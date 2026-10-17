@@ -1,0 +1,73 @@
+{
+  "evidence_type": "privacy_safe_aggregate",
+  "run_at": "2026-10-17T22:42:29.634657+00:00",
+  "candidate_base_commit": "ed1e14903cde5ebec4603d3ffbf8179fe7799870",
+  "source_worktree_dirty": true,
+  "dataset": {
+    "path": "evals/datasets/live_smoke_v1.jsonl",
+    "sha256": "a3ed9c1dd51b04495fb4c72b8b8fdc9a150a9f27d5a5678067d22866f15b318c",
+    "case_count": 4
+  },
+  "result": {
+    "run_count": 4,
+    "stopped_reason": null,
+    "overall_passed": true,
+    "api_task_success_rate": 1.0,
+    "database_consistency_rate": 1.0,
+    "s3_output_retrieval_rate": 1.0,
+    "langfuse_trace_completeness_rate": 1.0,
+    "trace_privacy_compliance_rate": 1.0,
+    "cost_measurement_rate": 1.0,
+    "distinct_generation_count": 4,
+    "distinct_trace_count": 4
+  },
+  "cost_usd": {
+    "sample_count": 4,
+    "total": 0.140440399999,
+    "maximum": 0.3
+  },
+  "latency_ms": {
+    "sample_count": 4,
+    "mean": 46804.099,
+    "p50_nearest_rank": 32234.855,
+    "p95_nearest_rank": 72524.499,
+    "min": 23209.215,
+    "max": 72524.499
+  },
+  "generation_types": [
+    {
+      "generation_type": "text_to_image",
+      "case_count": 2,
+      "total_cost_usd": 0.011975,
+      "mean_latency_ms": 27722.035,
+      "models": [
+        "gpt-image-2.5-sunburst"
+      ]
+    },
+    {
+      "generation_type": "image_to_image",
+      "case_count": 2,
+      "total_cost_usd": 0.128465399999,
+      "mean_latency_ms": 65886.164,
+      "models": [
+        "gpt-4.1-mini",
+        "gpt-image-2.5-sunburst"
+      ]
+    }
+  ],
+  "privacy": {
+    "artifact_scan": "clean",
+    "omitted": [
+      "prompts",
+      "image descriptions",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes",
+      "generation IDs",
+      "request IDs",
+      "trace IDs"
+    ]
+  },
+  "interpretation": "Four cases demonstrate live integration behavior only; they do not establish throughput, availability, or a production SLO."
+}
