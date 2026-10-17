@@ -16,6 +16,7 @@ from app.core.exceptions import (
     InvalidObjectKeyError,
     StorageError,
     VisionModelError,
+    WorkflowCompensationError,
 )
 from app.dependencies import get_image_service
 from app.schemas.image import (
@@ -59,6 +60,7 @@ ImageServiceDependency = Annotated[
     Depends(get_image_service),
 ]
 
+
 @router.post(
     "/presign-upload",
     response_model=PresignUploadResponse,
@@ -101,6 +103,7 @@ def create_presigned_upload(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="暂时无法创建图片上传地址",
         ) from error
+
 
 @router.post(
     "/analyze",
@@ -151,6 +154,7 @@ async def analyze_image(
             detail="OpenAI 暂时无法分析图片",
         ) from error
 
+
 @router.get(
     "/generations",
     response_model=ImageGenerationListResponse,
@@ -184,6 +188,7 @@ async def list_image_generations(
         offset=offset,
     )
 
+
 @router.get(
     "/generations/{generation_id}",
     response_model=ImageGenerationResponse,
@@ -198,9 +203,7 @@ async def get_image_generation(
 
     Get one image-generation record by UUID.
     """
-    generation = await image_service.get_generation(
-        generation_id
-    )
+    generation = await image_service.get_generation(generation_id)
 
     if generation is None:
         raise HTTPException(
@@ -209,6 +212,7 @@ async def get_image_generation(
         )
 
     return generation
+
 
 @router.post(
     "/generations",
@@ -225,9 +229,7 @@ async def create_image_generation(
     Create and execute an image-generation task.
     """
     try:
-        return await image_service.create_generation(
-            request
-        )
+        return await image_service.create_generation(request)
     except InvalidObjectKeyError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -247,6 +249,13 @@ async def create_image_generation(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="暂时无法生成图片",
         ) from error
+    except WorkflowCompensationError as error:
+        logger.exception("图片生成工作流补偿清理失败")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="图片生成失败，后台资源清理需要重试",
+        ) from error
     except StorageError as error:
         logger.exception("图片存储操作失败")
 
@@ -254,6 +263,7 @@ async def create_image_generation(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="暂时无法读取或保存图片",
         ) from error
+
 
 @router.get(
     "/generations/{generation_id}/download",
@@ -270,9 +280,7 @@ async def get_image_generation_download(
     Get a temporary download URL for a generated image.
     """
     try:
-        download = await image_service.get_generation_download(
-            generation_id
-        )
+        download = await image_service.get_generation_download(generation_id)
     except StorageError as error:
         logger.exception("生成图片下载地址失败")
 
@@ -289,6 +297,7 @@ async def get_image_generation_download(
 
     return download
 
+
 @router.delete(
     "/generations/{generation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -303,9 +312,7 @@ async def delete_image_generation(
 
     Soft-delete an image-generation record.
     """
-    deleted = await image_service.delete_generation(
-        generation_id
-    )
+    deleted = await image_service.delete_generation(generation_id)
 
     if not deleted:
         raise HTTPException(
@@ -313,6 +320,4 @@ async def delete_image_generation(
             detail="图片生成记录不存在",
         )
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

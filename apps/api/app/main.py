@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.langfuse_observability import flush_langfuse
 from app.core.observability import configure_logging
 from app.db.session import (
     check_database_connection,
@@ -37,6 +38,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     try:
         yield
     finally:
+        flush_langfuse()
         await dispose_database_engine()
 
 # 创建 FastAPI 应用对象。

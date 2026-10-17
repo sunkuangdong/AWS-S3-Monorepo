@@ -2,6 +2,11 @@ from openai import AsyncOpenAI, OpenAIError
 
 from app.core.config import Settings
 from app.core.exceptions import VisionModelError
+from app.core.langfuse_observability import (
+    mark_observation_error,
+    observe_operation,
+    response_usage_details,
+)
 
 
 class OpenAIVisionClient:
@@ -63,43 +68,70 @@ class OpenAIVisionClient:
             抛出 VisionModelError。
             VisionModelError if the request fails or returns no text.
         """
-        try:
-            response = await self.client.responses.create(
-                model=self.settings.openai_vision_model,
-                input=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": prompt,
-                            },
-                            {
-                                "type": "input_image",
-                                "image_url": image_url,
+        with observe_operation(
+            name="openai-vision-analysis",
+            as_type="generation",
+            model=self.settings.openai_vision_model,
+            model_parameters={
+                "detail": "low",
+                "max_output_tokens": 500,
+            },
+            metadata={
+                "workflow": "image_analysis",
+                "prompt_character_count": len(prompt),
+                "has_presigned_image_url": bool(image_url),
+            },
+        ) as observation:
+            try:
+                response = await self.client.responses.create(
+                    model=self.settings.openai_vision_model,
+                    input=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "input_text",
+                                    "text": prompt,
+                                },
+                                {
+                                    "type": "input_image",
+                                    "image_url": image_url,
 
-                                    # low 使用较少的图片 token，适合开发测试。
-                                    # low uses fewer image tokens and suits development tests.
-                                "detail": "low",
-                            },
-                        ]
-                    }
-                ],
-                max_output_tokens=500,
+                                    # low uses fewer image tokens and suits
+                                    # development tests.
+                                    "detail": "low",
+                                },
+                            ],
+                        }
+                    ],
+                    max_output_tokens=500,
+                )
+            except OpenAIError as error:
+                mark_observation_error(observation, error)
+                # Preserve the original exception for backend diagnostics.
+                raise VisionModelError(
+                    "OpenAI 图片分析请求失败"
+                ) from error
+
+            description = response.output_text.strip()
+            if not description:
+                error = VisionModelError(
+                    "OpenAI 没有返回图片描述"
+                )
+                mark_observation_error(observation, error)
+                raise error
+
+            usage = response_usage_details(response.usage)
+            observation.update(
+                metadata={
+                    "status": "completed",
+                    "workflow": "image_analysis",
+                    "prompt_character_count": len(prompt),
+                    "output_character_count": len(description),
+                    "has_presigned_image_url": True,
+                    "usage_reported": usage is not None,
+                },
+                usage_details=usage,
             )
-        except OpenAIError as error:
-            # from error 保留原始异常，方便后端日志排查。
-            # from error preserves the original exception for backend diagnostics.
-            raise VisionModelError(
-                "OpenAI 图片分析请求失败"
-            ) from error
-
-        description = response.output_text.strip()
-
-        if not description:
-            raise VisionModelError(
-                "OpenAI 没有返回图片描述"
-            )
-
-        return description
+            return description
 

@@ -30,6 +30,9 @@ dist/
 .coverage
 htmlcov/
 
+# Generated evaluation artifacts (datasets and protocols remain tracked)
+evals/results/
+
 # Node.js dependencies, caches, and build output
 node_modules/
 .pnpm-store/
@@ -49,5 +52,9 @@ coverage/
 
 # macOS
 .DS_Store
+
+# Personal resume exports
+/CV- WANGYOUHE.pdf
+/Kuangdong_Resume.pdf
 
 .pnpm-store/

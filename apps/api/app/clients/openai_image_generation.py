@@ -6,6 +6,11 @@ from openai.types.images_response import ImagesResponse
 
 from app.core.config import Settings
 from app.core.exceptions import ImageGenerationError
+from app.core.langfuse_observability import (
+    image_usage_details,
+    mark_observation_error,
+    observe_operation,
+)
 
 
 class OpenAIImageGenerationClient:
@@ -101,20 +106,50 @@ class OpenAIImageGenerationClient:
             or contains invalid Base64 data.
         """
         size = f"{width}x{height}"
-        try:
-            response = await self.client.images.generate(
-                model=self.settings.image_generation_model,
-                prompt=prompt,
-                n=1,
-                size=size,
-                output_format="png",
-            )
-        except OpenAIError as error:
-            raise ImageGenerationError(
-                "OpenAI 图片生成请求失败"
-            ) from error
+        with observe_operation(
+            name="openai-image-generation",
+            as_type="generation",
+            model=self.settings.image_generation_model,
+            model_parameters={
+                "size": size,
+                "n": 1,
+                "output_format": "png",
+            },
+            metadata={
+                "workflow": "text_to_image",
+                "prompt_character_count": len(prompt),
+            },
+        ) as observation:
+            try:
+                response = await self.client.images.generate(
+                    model=self.settings.image_generation_model,
+                    prompt=prompt,
+                    n=1,
+                    size=size,
+                    output_format="png",
+                )
+                image_bytes = self._decode_first_image(response)
+            except OpenAIError as error:
+                mark_observation_error(observation, error)
+                raise ImageGenerationError(
+                    "OpenAI 图片生成请求失败"
+                ) from error
+            except ImageGenerationError as error:
+                mark_observation_error(observation, error)
+                raise
 
-        return self._decode_first_image(response)
+            usage = image_usage_details(response.usage)
+            observation.update(
+                metadata={
+                    "status": "completed",
+                    "workflow": "text_to_image",
+                    "prompt_character_count": len(prompt),
+                    "image_bytes": len(image_bytes),
+                    "usage_reported": usage is not None,
+                },
+                usage_details=usage,
+            )
+            return image_bytes
 
     async def edit_image(
         self,
@@ -147,19 +182,54 @@ class OpenAIImageGenerationClient:
             content_type,
         )
 
-        try:
-            response = await self.client.images.edit(
-                model=self.settings.image_generation_model,
-                image=image_file,
-                prompt=prompt,
-                n=1,
-                size=size,
-                quality="high",
-                output_format="png",
-            )
-        except OpenAIError as error:
-            raise ImageGenerationError(
-                "OpenAI 图片编辑请求失败"
-            ) from error
+        with observe_operation(
+            name="openai-image-edit",
+            as_type="generation",
+            model=self.settings.image_generation_model,
+            model_parameters={
+                "size": size,
+                "quality": "high",
+                "n": 1,
+                "output_format": "png",
+            },
+            metadata={
+                "workflow": "image_to_image",
+                "prompt_character_count": len(prompt),
+                "input_image_bytes": len(image_bytes),
+                "input_content_type": content_type,
+            },
+        ) as observation:
+            try:
+                response = await self.client.images.edit(
+                    model=self.settings.image_generation_model,
+                    image=image_file,
+                    prompt=prompt,
+                    n=1,
+                    size=size,
+                    quality="high",
+                    output_format="png",
+                )
+                output_bytes = self._decode_first_image(response)
+            except OpenAIError as error:
+                mark_observation_error(observation, error)
+                raise ImageGenerationError(
+                    "OpenAI 图片编辑请求失败"
+                ) from error
+            except ImageGenerationError as error:
+                mark_observation_error(observation, error)
+                raise
 
-        return self._decode_first_image(response)
+            usage = image_usage_details(response.usage)
+            observation.update(
+                metadata={
+                    "status": "completed",
+                    "workflow": "image_to_image",
+                    "prompt_character_count": len(prompt),
+                    "input_image_bytes": len(image_bytes),
+                    "output_image_bytes": len(output_bytes),
+                    "input_content_type": content_type,
+                    "usage_reported": usage is not None,
+                },
+                usage_details=usage,
+            )
+            return output_bytes

@@ -5,7 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.exceptions import ImageGenerationError, InvalidObjectKeyError
+from app.core.exceptions import (
+    ImageGenerationError,
+    InvalidObjectKeyError,
+    StorageError,
+    WorkflowCompensationError,
+)
 from app.models.image_generation import ImageGeneration
 from app.schemas.image_generation import CreateImageGenerationRequest
 from app.services.image_service import ImageService
@@ -25,10 +30,15 @@ def _mark_completed(
     return generation
 
 
+def _mark_failed(generation: ImageGeneration) -> ImageGeneration:
+    generation.status = "failed"
+    return generation
+
+
 def build_service() -> tuple[ImageService, Mock, AsyncMock, AsyncMock, AsyncMock]:
     storage = Mock()
     storage.settings = SimpleNamespace(presigned_url_expires=600)
-    storage.upload_generated_image.return_value = "generated/result.png"
+    storage.upload_generated_image.return_value = "generations/result.png"
     storage.create_presigned_download_url.return_value = "https://example.test/result.png"
 
     vision = AsyncMock()
@@ -42,9 +52,10 @@ def build_service() -> tuple[ImageService, Mock, AsyncMock, AsyncMock, AsyncMock
         return generation
 
     repository.create.side_effect = create
-    repository.mark_completed.side_effect = (
-        lambda generation, **updates: _mark_completed(generation, **updates)
+    repository.mark_completed.side_effect = lambda generation, **updates: _mark_completed(
+        generation, **updates
     )
+    repository.mark_failed.side_effect = _mark_failed
 
     return (
         ImageService(storage, vision, image_generation, repository),
@@ -78,7 +89,7 @@ async def test_create_text_generation_completes_workflow() -> None:
 
     assert result.status == "completed"
     assert result.generation_type == "text_to_image"
-    assert result.output_object_key == "generated/result.png"
+    assert result.output_object_key == "generations/result.png"
     assert result.output_url == "https://example.test/result.png"
     image_generation.generate_image.assert_awaited_once_with(
         prompt="A lighthouse in a storm",
@@ -86,9 +97,7 @@ async def test_create_text_generation_completes_workflow() -> None:
         height=1024,
     )
     vision.analyze_image.assert_not_awaited()
-    storage.upload_generated_image.assert_called_once_with(
-        image_bytes=b"generated-image"
-    )
+    storage.upload_generated_image.assert_called_once_with(image_bytes=b"generated-image")
     assert repository.commit.await_count == 2
 
 
@@ -141,10 +150,61 @@ async def test_failed_generation_is_persisted_as_failed() -> None:
     repository.get_by_id.side_effect = get_by_id
 
     with pytest.raises(ImageGenerationError):
-        await service.create_generation(
-            CreateImageGenerationRequest(prompt="A lighthouse")
-        )
+        await service.create_generation(CreateImageGenerationRequest(prompt="A lighthouse"))
 
     repository.rollback.assert_awaited_once()
     repository.mark_failed.assert_awaited_once()
     assert repository.commit.await_count == 2
+
+
+def _pending_generation(generation_id) -> ImageGeneration:
+    return ImageGeneration(
+        id=generation_id,
+        user_prompt="A lighthouse",
+        final_prompt="A lighthouse",
+        generation_type="text_to_image",
+        width=1024,
+        height=1024,
+        status="pending",
+        created_at=datetime.now(UTC),
+    )
+
+
+@pytest.mark.anyio
+async def test_completion_commit_failure_deletes_output_and_marks_failed() -> None:
+    service, storage, _, _, repository = build_service()
+    repository.commit.side_effect = [
+        None,
+        RuntimeError("database unavailable"),
+        None,
+    ]
+    repository.get_by_id.side_effect = _pending_generation
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        await service.create_generation(CreateImageGenerationRequest(prompt="A lighthouse"))
+
+    repository.rollback.assert_awaited_once()
+    storage.delete_generated_image.assert_called_once_with(object_key="generations/result.png")
+    repository.mark_failed.assert_awaited_once()
+    assert repository.mark_failed.await_args.args[0].status == "failed"
+    assert repository.commit.await_count == 3
+
+
+@pytest.mark.anyio
+async def test_cleanup_failure_is_reported_after_database_state_is_failed() -> None:
+    service, storage, _, _, repository = build_service()
+    repository.commit.side_effect = [
+        None,
+        RuntimeError("database unavailable"),
+        None,
+    ]
+    repository.get_by_id.side_effect = _pending_generation
+    storage.delete_generated_image.side_effect = StorageError("delete unavailable")
+
+    with pytest.raises(WorkflowCompensationError):
+        await service.create_generation(CreateImageGenerationRequest(prompt="A lighthouse"))
+
+    storage.delete_generated_image.assert_called_once()
+    repository.mark_failed.assert_awaited_once()
+    assert repository.mark_failed.await_args.args[0].status == "failed"
+    assert repository.commit.await_count == 3

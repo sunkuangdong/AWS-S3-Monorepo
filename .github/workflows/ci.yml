@@ -22,9 +22,17 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install -e "./apps/api[dev]"
       - name: Lint API
-        run: python -m ruff check apps/api
+        run: python -m ruff check apps/api evals
       - name: Test API
         run: python -m pytest apps/api/tests -q
+      - name: Validate workflow evaluation dataset
+        run: python -m evals.validation
+      - name: Run offline workflow acceptance gate
+        run: >-
+          python -m evals.run_workflow
+          --dataset evals/datasets/workflow_smoke_v1.jsonl
+          --concurrency 4
+          --fail-on-gate
 
   web:
     name: Web checks

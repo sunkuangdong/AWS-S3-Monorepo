@@ -10,6 +10,7 @@ class ApplicationError(Exception):
     exceptions raised by Python or third-party libraries.
     """
 
+
 class StorageError(ApplicationError):
     """
     S3 存储操作失败时抛出。
@@ -25,6 +26,7 @@ class StorageError(ApplicationError):
     - Missing bucket
     - Presigned URL generation failure
     """
+
 
 class VisionModelError(ApplicationError):
     """
@@ -42,6 +44,7 @@ class VisionModelError(ApplicationError):
     - OpenAI cannot retrieve the image
     """
 
+
 class InvalidObjectKeyError(ApplicationError):
     """
     S3 object key 不符合项目规则时抛出。
@@ -50,6 +53,7 @@ class InvalidObjectKeyError(ApplicationError):
     当前项目只允许操作 uploads/ 目录中的对象。
     The current application only accepts objects below uploads/.
     """
+
 
 class ImageGenerationError(ApplicationError):
     """
@@ -67,4 +71,17 @@ class ImageGenerationError(ApplicationError):
     - Unavailable model
     - Prompt rejected by safety policies
     - Missing image data in the OpenAI response
+    """
+
+
+class WorkflowCompensationError(ApplicationError):
+    """
+    工作流主操作和补偿清理都失败时抛出。
+    Raised when both the primary workflow operation and compensation fail.
+
+    该异常表示需要人工或后台清理任务介入，例如 S3 输出已经上传，
+    但数据库完成提交与后续对象删除都失败。
+    This error signals that manual or asynchronous cleanup is required, for
+    example when the output upload succeeded but both the database completion
+    commit and the compensating object deletion failed.
     """

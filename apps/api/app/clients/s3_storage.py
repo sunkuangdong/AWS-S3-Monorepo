@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from uuid import uuid4
 
 import boto3
@@ -90,12 +90,9 @@ class S3StorageClient:
             raise ValueError(f"不支持的图片格式：{content_type}")
 
         original_suffix = Path(file_name).suffix.lower()
-        expected_suffix=SUPPORTED_IMAGE_TYPES[content_type]
+        expected_suffix = SUPPORTED_IMAGE_TYPES[content_type]
 
-        if (
-            content_type == "image/jpeg"
-            and original_suffix in {".jpg", ".jpeg"}
-        ):
+        if content_type == "image/jpeg" and original_suffix in {".jpg", ".jpeg"}:
             final_suffix = original_suffix
         else:
             final_suffix = expected_suffix
@@ -156,9 +153,7 @@ class S3StorageClient:
             ClientError,
             NoCredentialsError,
         ) as error:
-            raise StorageError(
-                "生成 S3 预签名上传表单失败"
-            ) from error
+            raise StorageError("生成 S3 预签名上传表单失败") from error
 
         return PresignUploadResponse(
             upload_url=result["url"],
@@ -198,9 +193,7 @@ class S3StorageClient:
             ClientError,
             NoCredentialsError,
         ) as error:
-            raise StorageError(
-                "生成 S3 预签名读取地址失败"
-            ) from error
+            raise StorageError("生成 S3 预签名读取地址失败") from error
 
     def download_image(
         self,
@@ -222,9 +215,7 @@ class S3StorageClient:
 
             body = response["Body"]
             try:
-                image_bytes = body.read(
-                    self.settings.max_upload_bytes + 1
-                )
+                image_bytes = body.read(self.settings.max_upload_bytes + 1)
             finally:
                 body.close()
         except (
@@ -232,19 +223,13 @@ class S3StorageClient:
             ClientError,
             NoCredentialsError,
         ) as error:
-            raise StorageError(
-                "从 S3 读取参考图失败"
-            ) from error
+            raise StorageError("从 S3 读取参考图失败") from error
 
         if not image_bytes:
-            raise StorageError(
-                "S3 中的参考图内容为空"
-            )
+            raise StorageError("S3 中的参考图内容为空")
 
         if len(image_bytes) > self.settings.max_upload_bytes:
-            raise StorageError(
-                "S3 中的参考图超过大小限制"
-            )
+            raise StorageError("S3 中的参考图超过大小限制")
 
         content_type = response.get(
             "ContentType",
@@ -252,9 +237,7 @@ class S3StorageClient:
         )
 
         if content_type not in SUPPORTED_IMAGE_TYPES:
-            raise StorageError(
-                f"S3 中的参考图格式不受支持：{content_type}"
-            )
+            raise StorageError(f"S3 中的参考图格式不受支持：{content_type}")
 
         return StoredImage(
             data=image_bytes,
@@ -288,13 +271,9 @@ class S3StorageClient:
             StorageError when the S3 upload fails.
         """
         if not image_bytes:
-            raise ValueError(
-                "生成图片内容不能为空"
-            )
+            raise ValueError("生成图片内容不能为空")
 
-        object_key = (
-            f"generations/{uuid4().hex}.png"
-        )
+        object_key = f"generations/{uuid4().hex}.png"
 
         try:
             self.client.put_object(
@@ -309,11 +288,41 @@ class S3StorageClient:
             ClientError,
             NoCredentialsError,
         ) as error:
-            raise StorageError(
-                "上传生成图片到 S3 失败"
-            ) from error
+            raise StorageError("上传生成图片到 S3 失败") from error
 
         return object_key
+
+    def delete_generated_image(
+        self,
+        *,
+        object_key: str,
+    ) -> None:
+        """
+        删除工作流刚刚写入的生成图片，用于失败补偿。
+        Delete a generated image as compensation for a failed workflow.
+
+        只允许删除 ``generations/`` 下的具体对象，防止补偿逻辑误删
+        用户上传的参考图片或 Bucket 中的其他数据。S3 的 DeleteObject
+        是幂等操作，因此对象已经不存在时也视为成功。
+        Only concrete keys below ``generations/`` are accepted so compensation
+        cannot delete user uploads or unrelated bucket data. S3 DeleteObject is
+        idempotent, so an already absent object is treated as success.
+        """
+        path = PurePosixPath(object_key)
+        if len(path.parts) != 2 or path.parts[0] != "generations" or str(path) != object_key:
+            raise StorageError("拒绝删除非 generations 目录中的对象")
+
+        try:
+            self.client.delete_object(
+                Bucket=self.settings.s3_bucket,
+                Key=object_key,
+            )
+        except (
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+        ) as error:
+            raise StorageError("删除补偿用生成图片失败") from error
 
     def create_presigned_attachment_url(
         self,
@@ -334,9 +343,7 @@ class S3StorageClient:
                 Params={
                     "Bucket": self.settings.s3_bucket,
                     "Key": object_key,
-                    "ResponseContentDisposition": (
-                        f'attachment; filename="{file_name}"'
-                    ),
+                    "ResponseContentDisposition": (f'attachment; filename="{file_name}"'),
                 },
                 ExpiresIn=self.settings.presigned_url_expires,
             )
@@ -345,6 +352,4 @@ class S3StorageClient:
             ClientError,
             NoCredentialsError,
         ) as error:
-            raise StorageError(
-            "生成 S3 临时下载地址失败"
-        ) from error
+            raise StorageError("生成 S3 临时下载地址失败") from error

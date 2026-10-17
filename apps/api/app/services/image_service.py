@@ -11,6 +11,11 @@ from app.core.exceptions import (
     InvalidObjectKeyError,
     StorageError,
     VisionModelError,
+    WorkflowCompensationError,
+)
+from app.core.langfuse_observability import (
+    mark_observation_error,
+    observe_operation,
 )
 from app.models.image_generation import ImageGeneration
 from app.repositories.image_generation import ImageGenerationRepository
@@ -83,15 +88,11 @@ class ImageService:
         output_url: str | None = None
 
         if generation.output_object_key is not None:
-            output_url = (
-                self.storage_client.create_presigned_download_url(
-                    object_key=generation.output_object_key,
-                )
+            output_url = self.storage_client.create_presigned_download_url(
+                object_key=generation.output_object_key,
             )
 
-        response = ImageGenerationResponse.model_validate(
-            generation
-        )
+        response = ImageGenerationResponse.model_validate(generation)
 
         return response.model_copy(
             update={
@@ -128,7 +129,128 @@ class ImageService:
             f"{image_analysis}"
         )
 
+    async def _mark_pending_generation_failed(
+        self,
+        generation_id: UUID,
+    ) -> bool:
+        """Reload a committed pending record and persist its failed state."""
+        failed_generation = await self.generation_repository.get_by_id(generation_id)
+        if failed_generation is None:
+            return False
+
+        await self.generation_repository.mark_failed(failed_generation)
+        await self.generation_repository.commit()
+        return True
+
+    async def _compensate_completion_failure(
+        self,
+        *,
+        generation_id: UUID,
+        output_object_key: str,
+    ) -> None:
+        """Remove an uploaded output and persist failure after DB completion fails."""
+        await self.generation_repository.rollback()
+
+        cleanup_error: Exception | None = None
+        with observe_operation(
+            name="s3-delete-generated-image-compensation",
+            metadata={
+                "generation_id": str(generation_id),
+                "object_prefix": "generations",
+            },
+        ) as cleanup_observation:
+            try:
+                await asyncio.to_thread(
+                    self.storage_client.delete_generated_image,
+                    object_key=output_object_key,
+                )
+            except Exception as error:  # noqa: BLE001 - compensation boundary
+                cleanup_error = error
+                mark_observation_error(cleanup_observation, error)
+            else:
+                cleanup_observation.update(
+                    metadata={
+                        "status": "completed",
+                        "generation_id": str(generation_id),
+                        "object_prefix": "generations",
+                    },
+                )
+
+        with observe_operation(
+            name="postgresql-persist-failed",
+            metadata={
+                "generation_id": str(generation_id),
+                "target_status": "failed",
+                "reason": "completion_persistence_failed",
+            },
+        ) as database_observation:
+            persisted = await self._mark_pending_generation_failed(generation_id)
+            if persisted:
+                database_observation.update(
+                    metadata={
+                        "status": "completed",
+                        "generation_id": str(generation_id),
+                        "persisted_status": "failed",
+                        "reason": "completion_persistence_failed",
+                    },
+                )
+            else:
+                database_observation.update(
+                    level="WARNING",
+                    status_message="generation_not_found",
+                    metadata={
+                        "status": "not_found",
+                        "generation_id": str(generation_id),
+                        "reason": "completion_persistence_failed",
+                    },
+                )
+
+        if cleanup_error is not None:
+            raise WorkflowCompensationError(
+                "数据库完成提交失败后无法删除已上传的生成图片"
+            ) from cleanup_error
+
     async def create_generation(
+        self,
+        request: CreateImageGenerationRequest,
+    ) -> ImageGenerationResponse:
+        """Run one generation workflow inside a privacy-safe root trace."""
+        generation_type = (
+            "image_to_image" if request.input_object_key is not None else "text_to_image"
+        )
+        with observe_operation(
+            name="image-generation-workflow",
+            as_type="chain",
+            metadata={
+                "status": "started",
+                "generation_type": generation_type,
+                "has_input_image": request.input_object_key is not None,
+                "prompt_character_count": len(request.prompt),
+                "width": request.width,
+                "height": request.height,
+            },
+        ) as workflow:
+            try:
+                result = await self._create_generation(request)
+            except Exception as error:
+                mark_observation_error(workflow, error)
+                raise
+
+            workflow.update(
+                metadata={
+                    "status": result.status,
+                    "generation_id": str(result.id),
+                    "generation_type": result.generation_type,
+                    "has_input_image": result.input_object_key is not None,
+                    "has_output_image": result.output_object_key is not None,
+                    "prompt_character_count": len(request.prompt),
+                    "width": result.width,
+                    "height": result.height,
+                },
+            )
+            return result
+
+    async def _create_generation(
         self,
         request: CreateImageGenerationRequest,
     ) -> ImageGenerationResponse:
@@ -150,15 +272,9 @@ class ImageService:
         input_object_key = request.input_object_key
 
         if input_object_key is not None:
-            self.validate_object_key(
-                input_object_key
-            )
+            self.validate_object_key(input_object_key)
 
-        generation_type = (
-            "image_to_image"
-            if input_object_key is not None
-            else "text_to_image"
-        )
+        generation_type = "image_to_image" if input_object_key is not None else "text_to_image"
 
         # 先创建 pending 记录。
         # First create the pending record.
@@ -175,24 +291,46 @@ class ImageService:
             status="pending",
         )
 
-        generation = await self.generation_repository.create(
-            generation
-        )
+        with observe_operation(
+            name="postgresql-persist-pending",
+            metadata={
+                "generation_type": generation_type,
+                "target_status": "pending",
+            },
+        ) as database_observation:
+            generation = await self.generation_repository.create(generation)
 
-        # 先提交 pending，使任务在外部调用前持久化。
-        # Commit pending before calling external services.
-        await self.generation_repository.commit()
+            # Commit pending before calling external services.
+            await self.generation_repository.commit()
+            database_observation.update(
+                metadata={
+                    "status": "completed",
+                    "generation_id": str(generation.id),
+                    "generation_type": generation_type,
+                    "persisted_status": "pending",
+                },
+            )
 
         try:
             image_analysis: str | None = None
             final_prompt = request.prompt
 
             if input_object_key is not None:
-                reference_image_url = (
-                    self.storage_client.create_presigned_download_url(
+                with observe_operation(
+                    name="s3-presign-reference-download",
+                    metadata={
+                        "object_prefix": "uploads",
+                    },
+                ) as s3_presign_observation:
+                    reference_image_url = self.storage_client.create_presigned_download_url(
                         object_key=input_object_key,
                     )
-                )
+                    s3_presign_observation.update(
+                        metadata={
+                            "status": "completed",
+                            "object_prefix": "uploads",
+                        },
+                    )
 
                 image_analysis = await self.vision_client.analyze_image(
                     image_url=reference_image_url,
@@ -202,10 +340,24 @@ class ImageService:
                     ),
                 )
 
-                reference_image = await asyncio.to_thread(
-                    self.storage_client.download_image,
-                    object_key=input_object_key,
-                )
+                with observe_operation(
+                    name="s3-download-reference-image",
+                    metadata={
+                        "object_prefix": "uploads",
+                    },
+                ) as s3_download_observation:
+                    reference_image = await asyncio.to_thread(
+                        self.storage_client.download_image,
+                        object_key=input_object_key,
+                    )
+                    s3_download_observation.update(
+                        metadata={
+                            "status": "completed",
+                            "object_prefix": "uploads",
+                            "image_bytes": len(reference_image.data),
+                            "content_type": reference_image.content_type,
+                        },
+                    )
 
                 final_prompt = self._build_edit_prompt(
                     user_prompt=request.prompt,
@@ -221,31 +373,64 @@ class ImageService:
                     height=request.height,
                 )
             else:
-                image_bytes = (
-                    await self.image_generation_client.generate_image(
-                        prompt=final_prompt,
-                        width=request.width,
-                        height=request.height,
-                    )
+                image_bytes = await self.image_generation_client.generate_image(
+                    prompt=final_prompt,
+                    width=request.width,
+                    height=request.height,
                 )
 
             # boto3 是同步客户端，放到工作线程中执行。
             # boto3 is synchronous, so run the upload in a worker thread.
-            output_object_key = await asyncio.to_thread(
-                self.storage_client.upload_generated_image,
-                image_bytes=image_bytes,
-            )
+            with observe_operation(
+                name="s3-upload-generated-image",
+                metadata={
+                    "object_prefix": "generations",
+                    "image_bytes": len(image_bytes),
+                    "content_type": "image/png",
+                },
+            ) as s3_upload_observation:
+                output_object_key = await asyncio.to_thread(
+                    self.storage_client.upload_generated_image,
+                    image_bytes=image_bytes,
+                )
+                s3_upload_observation.update(
+                    metadata={
+                        "status": "completed",
+                        "object_prefix": "generations",
+                        "image_bytes": len(image_bytes),
+                        "content_type": "image/png",
+                    },
+                )
 
-            generation = (
-                await self.generation_repository.mark_completed(
-                    generation,
-                    image_analysis=image_analysis,
-                    final_prompt=final_prompt,
+            try:
+                with observe_operation(
+                    name="postgresql-persist-completed",
+                    metadata={
+                        "generation_id": str(generation.id),
+                        "target_status": "completed",
+                    },
+                ) as database_observation:
+                    generation = await self.generation_repository.mark_completed(
+                        generation,
+                        image_analysis=image_analysis,
+                        final_prompt=final_prompt,
+                        output_object_key=output_object_key,
+                    )
+                    await self.generation_repository.commit()
+                    database_observation.update(
+                        metadata={
+                            "status": "completed",
+                            "generation_id": str(generation.id),
+                            "persisted_status": "completed",
+                            "has_output_image": True,
+                        },
+                    )
+            except Exception:
+                await self._compensate_completion_failure(
+                    generation_id=generation.id,
                     output_object_key=output_object_key,
                 )
-            )
-            
-            await self.generation_repository.commit()
+                raise
         except (
             ImageGenerationError,
             StorageError,
@@ -253,28 +438,40 @@ class ImageService:
         ):
             # 清理当前可能失败的数据库事务。
             # Clear any failed database transaction.
-            await self.generation_repository.rollback()
+            with observe_operation(
+                name="postgresql-persist-failed",
+                metadata={
+                    "generation_id": str(generation.id),
+                    "target_status": "failed",
+                },
+            ) as database_observation:
+                await self.generation_repository.rollback()
 
-            # pending 已经在前面提交，因此可以重新查询并标记失败。
-            # The pending record was committed earlier, so retrieve it
-            # again and mark it as failed.
-            failed_generation = (
-                await self.generation_repository.get_by_id(
-                    generation.id
-                )
-            )
+                # The pending record was committed earlier, so retrieve it
+                # again and mark it as failed.
+                persisted = await self._mark_pending_generation_failed(generation.id)
 
-            if failed_generation is not None:
-                await self.generation_repository.mark_failed(
-                    failed_generation
-                )
-                await self.generation_repository.commit()
+                if persisted:
+                    database_observation.update(
+                        metadata={
+                            "status": "completed",
+                            "generation_id": str(generation.id),
+                            "persisted_status": "failed",
+                        },
+                    )
+                else:
+                    database_observation.update(
+                        level="WARNING",
+                        status_message="generation_not_found",
+                        metadata={
+                            "status": "not_found",
+                            "generation_id": str(generation.id),
+                        },
+                    )
 
             raise
 
-        return self._build_generation_response(
-            generation
-        )
+        return self._build_generation_response(generation)
 
     def create_upload(
         self,
@@ -315,19 +512,13 @@ class ImageService:
         InvalidObjectKeyError.
         """
         if not object_key.startswith("uploads/"):
-            raise InvalidObjectKeyError(
-                "此目录不存在"
-            )
+            raise InvalidObjectKeyError("此目录不存在")
 
         if object_key == "uploads/":
-            raise InvalidObjectKeyError(
-                "object_key 必须指向具体文件"
-            )
+            raise InvalidObjectKeyError("object_key 必须指向具体文件")
 
         if ".." in object_key:
-            raise InvalidObjectKeyError(
-                "object_key 中不能包含 '..'"
-            )
+            raise InvalidObjectKeyError("object_key 中不能包含 '..'")
 
     async def analyze_image(
         self,
@@ -349,10 +540,8 @@ class ImageService:
         """
         self.validate_object_key(request.object_key)
 
-        image_url = (
-            self.storage_client.create_presigned_download_url(
-                object_key=request.object_key,
-            )
+        image_url = self.storage_client.create_presigned_download_url(
+            object_key=request.object_key,
         )
 
         description = await self.vision_client.analyze_image(
@@ -386,14 +575,9 @@ class ImageService:
             offset=offset,
         )
 
-        total = (
-            await self.generation_repository.count_active()
-        )
+        total = await self.generation_repository.count_active()
 
-        items = [
-            self._build_generation_response(generation)
-            for generation in generations
-        ]
+        items = [self._build_generation_response(generation) for generation in generations]
 
         return ImageGenerationListResponse(
             items=items,
@@ -414,18 +598,12 @@ class ImageService:
         找不到记录时返回 None。
         Return None when the record does not exist.
         """
-        generation = (
-            await self.generation_repository.get_active_by_id(
-                generation_id
-            )
-        )
+        generation = await self.generation_repository.get_active_by_id(generation_id)
 
         if generation is None:
             return None
 
-        return self._build_generation_response(
-            generation
-        )
+        return self._build_generation_response(generation)
 
     async def get_generation_download(
         self,
@@ -439,32 +617,21 @@ class ImageService:
         找不到有效记录或图片尚不可下载时返回 None。
         Return None when no active downloadable image exists.
         """
-        generation = (
-            await self.generation_repository.get_active_by_id(
-                generation_id
-            )
-        )
+        generation = await self.generation_repository.get_active_by_id(generation_id)
 
         if generation is None:
             return None
 
-        if (
-            generation.status != "completed"
-            or generation.output_object_key is None
-        ):
+        if generation.status != "completed" or generation.output_object_key is None:
             return None
 
-        download_url = (
-            self.storage_client.create_presigned_attachment_url(
-                object_key=generation.output_object_key,
-            )
+        download_url = self.storage_client.create_presigned_attachment_url(
+            object_key=generation.output_object_key,
         )
 
         return ImageGenerationDownloadResponse(
             download_url=download_url,
-            expires_in=(
-                self.storage_client.settings.presigned_url_expires
-            ),
+            expires_in=(self.storage_client.settings.presigned_url_expires),
         )
 
     async def delete_generation(
@@ -479,19 +646,13 @@ class ImageService:
         找不到有效记录时返回 False。
         Return False when no active record exists.
         """
-        generation = (
-            await self.generation_repository.get_active_by_id(
-                generation_id
-            )
-        )
+        generation = await self.generation_repository.get_active_by_id(generation_id)
 
         if generation is None:
             return False
 
         try:
-            await self.generation_repository.soft_delete(
-                generation
-            )
+            await self.generation_repository.soft_delete(generation)
 
             await self.generation_repository.commit()
         except Exception:
@@ -499,4 +660,3 @@ class ImageService:
             raise
 
         return True
-        

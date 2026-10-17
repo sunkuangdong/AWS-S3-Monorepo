@@ -10,6 +10,7 @@ _TEST_ENVIRONMENT = {
     "IMAGE_GENERATION_MODEL": "test-image-model",
     "DATABASE_URL": "postgresql+psycopg://postgres:postgres@localhost:5432/test_db",
     "FRONTEND_ORIGIN": "http://localhost:5173",
+    "LANGFUSE_TRACING_ENABLED": "false",
 }
 
 for name, value in _TEST_ENVIRONMENT.items():

@@ -12,6 +12,7 @@ This release is an engineering-focused, demo-ready MVP with automated tests, CI,
 - Edit JPEG, PNG, or WebP reference images.
 - Upload reference images directly from the browser to private S3 with presigned POST forms.
 - Persist `pending`, `completed`, and `failed` task states.
+- Compensate failed completion commits by deleting uploaded outputs and persisting `failed`.
 - Browse paginated history, download results, and soft-delete records.
 - Manage PostgreSQL schema changes with Alembic.
 - Trace requests with request IDs and JSON logs.
@@ -55,6 +56,8 @@ Fill in the AWS, S3, and OpenAI values in `apps/api/.env`, then run:
 ```bash
 docker compose up --build
 ```
+
+The backend IAM principal needs object-level `s3:GetObject` and `s3:PutObject` access for the application prefixes, plus `s3:DeleteObject` on `generations/*` for failed-workflow compensation. `s3:ListBucket` is not required by the application workflow.
 
 The API container waits for PostgreSQL, applies Alembic migrations, and starts the server.
 
@@ -136,7 +139,7 @@ pnpm dev
 
 ```bash
 # API
-.venv/bin/python -m ruff check apps/api
+.venv/bin/python -m ruff check apps/api evals
 .venv/bin/python -m pytest apps/api/tests -q
 
 # Web
@@ -147,9 +150,41 @@ pnpm build
 
 API tests mock S3 and OpenAI, so they require no cloud credentials and incur no model cost. GitHub Actions runs the same checks for pull requests and pushes to `main`.
 
+## Offline workflow evaluation
+
+The deterministic workflow harness runs the real `ImageService` orchestration against in-memory PostgreSQL, S3, OpenAI Vision, and OpenAI Images substitutes. It measures normal-path completion, injected-failure containment, database/object consistency, orphaned outputs, and concurrency without cloud calls or fees.
+
+```bash
+.venv/bin/python -m evals.validation
+.venv/bin/python -m evals.run_workflow \
+  --dataset evals/datasets/workflow_smoke_v1.jsonl \
+  --concurrency 4
+```
+
+Generated evidence is written under ignored `evals/results/` directories. Metric definitions and acceptance rules are documented in [`evals/EVALUATION_PROTOCOL.md`](evals/EVALUATION_PROTOCOL.md). Fake-service latency is not production latency.
+
 ## Observability
 
 Every API response contains `X-Request-ID`. The API emits one JSON log entry per request with the request ID, method, path, status code, and duration. `/health` is a process liveness probe, while `/health/database` verifies PostgreSQL readiness.
+
+When Langfuse is enabled, each image workflow emits a root trace with nested PostgreSQL, S3, OpenAI vision, and image-generation observations. Generations include model and token-usage metadata so latency, errors, usage, and configured model cost can be analyzed per workflow.
+
+```dotenv
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
+LANGFUSE_TRACING_ENABLED=true
+LANGFUSE_ENVIRONMENT=local-evaluation
+```
+
+The trace integration deliberately excludes prompts, generated descriptions, presigned URLs, S3 object keys, and image bytes. Only bounded operational metadata—such as status, model, dimensions, byte counts, token usage, and database IDs—is exported. Disable tracing in tests or sensitive environments with `LANGFUSE_TRACING_ENABLED=false`.
+
+Langfuse already has managed pricing for `gpt-4.1-mini`. The project image model uses modality-specific token prices, so preview and apply its audited custom pricing definition with:
+
+```bash
+.venv/bin/python apps/api/scripts/configure_langfuse_model.py
+.venv/bin/python apps/api/scripts/configure_langfuse_model.py --apply
+```
 
 ## Current boundaries
 

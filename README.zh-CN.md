@@ -12,6 +12,7 @@
 - 上传 JPEG、PNG 或 WebP 参考图后进行图片编辑；
 - 浏览器通过预签名 POST 直接上传到私有 S3；
 - 保存 `pending`、`completed`、`failed` 任务状态；
+- 数据库完成提交失败时删除已上传输出，并将任务补偿为 `failed`；
 - 分页查看历史记录，下载结果并软删除记录；
 - 通过 Alembic 管理 PostgreSQL 模式变更；
 - 使用请求 ID 和 JSON 日志跟踪请求；
@@ -102,6 +103,8 @@ cp apps/web/.env.example apps/web/.env
 ```bash
 docker compose up --build
 ```
+
+后端 IAM 身份需要应用目录的对象级 `s3:GetObject`、`s3:PutObject` 权限，以及针对 `generations/*` 的 `s3:DeleteObject` 权限，以便在工作流失败时执行补偿删除。应用工作流不需要 `s3:ListBucket`。
 
 容器会等待 PostgreSQL 就绪、执行 Alembic 迁移并启动服务：
 
@@ -206,7 +209,7 @@ pnpm dev
 
 ```bash
 # 后端
-.venv/bin/python -m ruff check apps/api
+.venv/bin/python -m ruff check apps/api evals
 .venv/bin/python -m pytest apps/api/tests -q
 
 # 前端
@@ -217,6 +220,19 @@ pnpm build
 
 后端测试会 Mock S3 和 OpenAI，不需要真实凭证，也不会产生模型费用。GitHub Actions 会在 Pull Request 和 `main` 分支推送时执行相同检查。
 
+## 离线工作流评估
+
+确定性评估运行器会执行真实的 `ImageService` 编排逻辑，但用内存实现替代 PostgreSQL、S3、OpenAI Vision 和 OpenAI Images。它在不访问云服务、不产生费用的前提下，测量正常路径完成率、注入故障收敛率、数据库与对象状态一致性、孤儿输出和并发执行情况。
+
+```bash
+.venv/bin/python -m evals.validation
+.venv/bin/python -m evals.run_workflow \
+  --dataset evals/datasets/workflow_smoke_v1.jsonl \
+  --concurrency 4
+```
+
+证据文件会写入已被 Git 忽略的 `evals/results/` 目录。指标定义和验收规则见 [`evals/EVALUATION_PROTOCOL.md`](evals/EVALUATION_PROTOCOL.md)。Mock 服务延迟不能当作生产环境延迟。
+
 ## 可观测性
 
 API 为每个响应添加 `X-Request-ID`，并输出单行 JSON 请求日志：
@@ -226,6 +242,25 @@ API 为每个响应添加 `X-Request-ID`，并输出单行 JSON 请求日志：
 ```
 
 调用方可以传入不超过 128 个字符的 `X-Request-ID`，用于串联客户端与服务端日志。
+
+启用 Langfuse 后，每次图片工作流会生成一条根 Trace，并在其下记录 PostgreSQL、S3、OpenAI 视觉分析和图片生成步骤。模型 Observation 会记录模型名与 Token 用量，便于按工作流分析延迟、错误、用量以及配置后的模型费用。
+
+```dotenv
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
+LANGFUSE_TRACING_ENABLED=true
+LANGFUSE_ENVIRONMENT=local-evaluation
+```
+
+为保护敏感数据，Trace 不上传 Prompt、模型生成的描述、预签名 URL、S3 Object Key 或图片内容；只记录状态、模型、尺寸、字节数、Token 用量和数据库 ID 等有限的运行元数据。测试或敏感环境可设置 `LANGFUSE_TRACING_ENABLED=false` 完全关闭 Trace。
+
+Langfuse 已内置 `gpt-4.1-mini` 的价格。项目使用的图片模型按文本输入、图片输入和图片输出 Token 分别计费，可先预览、再应用仓库中经过审计的自定义价格配置：
+
+```bash
+.venv/bin/python apps/api/scripts/configure_langfuse_model.py
+.venv/bin/python apps/api/scripts/configure_langfuse_model.py --apply
+```
 
 ## S3 CORS
 
