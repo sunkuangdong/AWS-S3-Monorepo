@@ -67,3 +67,8 @@ deterministic stubs, so the run makes no paid cloud calls. The tracked
 `load_protocol_v1.json` manifest locks the parameters, stub delays,
 safety properties, and acceptance gates. Use `--allow-protocol-deviation` only
 for clearly marked exploratory capacity runs.
+
+[`CAPACITY_EXPERIMENT.md`](CAPACITY_EXPERIMENT.md) defines a separate
+exploratory run through concurrency 64. It uses its own `capacity-api`, port
+8002, manifest, runner, and result suffix. The experiment samples cgroup CPU and
+memory plus PostgreSQL connection activity without modifying frozen Load v1.

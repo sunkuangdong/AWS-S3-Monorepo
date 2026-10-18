@@ -1,0 +1,48 @@
+{
+  "protocol_version": "1.0.0",
+  "status": "exploratory",
+  "created_date": "2026-10-17",
+  "runner": {
+    "module": "evals.run_capacity",
+    "application_module": "evals.capacity_app:app",
+    "compose_profile": "capacity",
+    "compose_service": "capacity-api",
+    "uvicorn_workers": 1,
+    "concurrencies": [
+      1,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "requests_per_tier": 200,
+    "warmup_requests_per_tier": 5,
+    "timeout_seconds": 30.0,
+    "sample_interval_seconds": 0.1
+  },
+  "workload": {
+    "generation_type": "text_to_image",
+    "width": 1024,
+    "height": 1024,
+    "post_latency_scope": "POST /api/v1/images/generations only",
+    "resource_window": "measured POST batch only",
+    "verification_scope": "API readback backed by real PostgreSQL after each batch"
+  },
+  "stub_delays_ms": {
+    "storage": 0,
+    "vision": 50,
+    "image_generation": 250
+  },
+  "safety": {
+    "cloud_calls_enabled": false,
+    "langfuse_tracing_enabled": false,
+    "real_postgresql_enabled": true,
+    "expected_cost_usd": 0.0
+  },
+  "saturation_signals": {
+    "maximum_marginal_throughput_gain": 0.2,
+    "minimum_p95_latency_growth": 0.5,
+    "maximum_scaling_efficiency": 0.5
+  }
+}

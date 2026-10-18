@@ -80,6 +80,51 @@ services:
       retries: 10
       start_period: 10s
 
+  capacity-api:
+    profiles:
+      - capacity
+    build:
+      context: .
+      dockerfile: evals/Dockerfile.load
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && uvicorn evals.capacity_app:app --host 0.0.0.0 --port 8002 --workers 1",
+      ]
+    environment:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: capacity-test-disabled
+      AWS_SECRET_ACCESS_KEY: capacity-test-disabled
+      S3_BUCKET: capacity-test-disabled
+      OPENAI_API_KEY: capacity-test-disabled
+      MODEL_NAME: capacity-test-disabled
+      IMAGE_GENERATION_MODEL: capacity-test-disabled
+      DATABASE_URL: "postgresql+psycopg://ai_image:ai_image_local@database:5432/ai_image?application_name=capacity-api"
+      FRONTEND_ORIGIN: http://localhost:5173
+      LANGFUSE_TRACING_ENABLED: "false"
+      CAPACITY_STUB_STORAGE_DELAY_MS: "0"
+      CAPACITY_STUB_VISION_DELAY_MS: "50"
+      CAPACITY_STUB_IMAGE_DELAY_MS: "250"
+      LOG_LEVEL: INFO
+    ports:
+      - "8002:8002"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8002/capacity-test/status')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   web:
     build:
       context: .
