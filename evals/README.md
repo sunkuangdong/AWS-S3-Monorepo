@@ -2,6 +2,10 @@
 
 The evaluation harness executes the real `ImageService` orchestration against deterministic in-memory implementations of PostgreSQL, S3, OpenAI Vision, and OpenAI Images. It produces reproducible workflow and failure-compensation evidence without cloud calls or fees.
 
+The consolidated results, cost boundary, failure boundary, provenance, and
+limitations across Workflow Smoke, Live Smoke, Load v1, and Capacity v1-v3 are
+published in [`FINAL_EVALUATION_REPORT.md`](FINAL_EVALUATION_REPORT.md).
+
 Protocol `1.0.0` is frozen at Git tag `workflow-eval-v1.0.0`. Its tracked manifest locks the 12 reviewed cases and dataset SHA-256. Changes to labels or gates require a new protocol version.
 
 ## Run

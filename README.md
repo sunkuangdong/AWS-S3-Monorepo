@@ -6,6 +6,21 @@ A full-stack AI image creation project organized as a monorepo. It supports text
 
 This release is an engineering-focused, demo-ready MVP with automated tests, CI, containers, database migrations, health checks, and structured request logs.
 
+## Engineering highlights
+
+- Model the image workflow as durable `pending`, `completed`, and `failed`
+  PostgreSQL states instead of treating an external model call as one opaque
+  HTTP operation.
+- Apply compensating actions when a generated S3 object exists but the final
+  database commit fails, preventing orphaned outputs and stale pending tasks.
+- Keep upload bytes out of the API process by issuing scoped presigned S3 POST
+  forms to the browser.
+- Trace PostgreSQL, S3, vision, and image-generation stages in Langfuse while
+  deliberately excluding prompts, image contents, object keys, and signed URLs.
+- Evaluate correctness and capacity with versioned datasets, manifests, Git
+  tags, privacy-safe evidence, deterministic failure injection, and controlled
+  single-variable experiments.
+
 ## Features
 
 - Generate 1024 × 1024 images from text prompts.
@@ -22,13 +37,27 @@ This release is an engineering-focused, demo-ready MVP with automated tests, CI,
 
 ```text
 Browser (React)
-  │
-  ├─ Request presigned POST ─────────► FastAPI ─────► Amazon S3 signing
-  ├─ Upload reference directly ──────► Private Amazon S3
-  └─ Create generation task ─────────► FastAPI
-                                         ├─► PostgreSQL task state
-                                         ├─► OpenAI vision/image generation
-                                         └─► Amazon S3 generated output
+  ├─ request upload authorization ─────► FastAPI ─────► scoped S3 presigned POST
+  ├─ upload reference bytes directly ─────────────────► private Amazon S3
+  └─ create generation request ────────► ImageService orchestration
+                                           │
+                                           ├─ 1. persist PostgreSQL `pending`
+                                           ├─ 2. load/analyze reference image
+                                           │     (image-to-image only)
+                                           ├─ 3. call OpenAI image generation
+                                           ├─ 4. upload generated image to S3
+                                           ├─ 5. commit PostgreSQL `completed`
+                                           └─ 6. return temporary download URL
+
+Failure path
+  ├─ external call fails ──────────────► persist `failed`
+  ├─ output exists but DB commit fails ► delete output, then persist `failed`
+  └─ response delivery fails after commit
+                                      ► preserve durable `completed` state
+
+Operational evidence
+  ├─ structured JSON request logs + X-Request-ID
+  └─ privacy-safe Langfuse workflow spans, token usage, latency, and cost
 ```
 
 Image upload bytes do not pass through FastAPI. The backend handles temporary authorization, validation, workflow orchestration, task persistence, and OpenAI access.
@@ -41,6 +70,32 @@ See the [architecture notes](docs/architecture.zh-CN.md) for design decisions an
 - Web: React 19, TypeScript, Vite, Radix UI.
 - Quality: Pytest, Ruff, Vitest, ESLint, GitHub Actions.
 - Infrastructure: PostgreSQL, private Amazon S3, Docker Compose.
+
+## Measured evaluation results
+
+The repository includes a layered evaluation program rather than a single
+happy-path demo. Workflow and load tests use deterministic substitutes; Live
+Smoke alone calls the real paid services.
+
+| Evaluation | Workload | Result | Latency / throughput | Cost | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Workflow Smoke v1 | 12 reviewed normal, validation, database, and provider-failure scenarios | 100% scenario expectations and terminal-state consistency; 0 orphan outputs | 100.380 ms P95 harness latency | $0 | [JSON](evals/evidence/workflow_v1_summary.json) |
+| Live Smoke v1 | 4 real PostgreSQL/S3/OpenAI/Langfuse workflows | 4/4 API, database, S3, trace, privacy, and cost checks passed | 32.235 s P50; 72.524 s P95 | $0.1404404 | [JSON](evals/evidence/live_smoke_v1_summary.json) |
+| Load v1 | 160 measured requests through c16 | 100% API and database consistency | 42.144 RPS; 346.008 ms P95 at c16 | $0 | [JSON](evals/evidence/load_v1_summary.json) |
+| Capacity v1 | 1,200 measured requests through c64 | 100% success; no saturation observed within the tested range | 165.047 RPS; 511.634 ms P95 at c64 | $0 | [JSON](evals/evidence/capacity_v1_summary.json) |
+| Capacity v2 | Three repeated breakpoint runs | c96 was the first repeatable performance knee; request failures in 2/3 runs | 70.147 RPS median; 4,352.453 ms median P95 at c96 | $0 | [JSON](evals/evidence/capacity_v2_summary.json) |
+| Capacity v3 | Three validation runs; 11,000 measured requests | c64/c96: 100%; first reproduced request-failure tier: c128 | 80.569 RPS median; 3,375.503 ms median P95 at c96 | $0 | [JSON](evals/evidence/capacity_v3_validation_summary.json) |
+
+Capacity v3 changed only the isolated evaluation service's SQLAlchemy pool
+from `5 + 10` to `20 + 20`. At concurrency 96, fully successful runs improved
+from **1/3 to 3/3**, median throughput increased **14.9%**, and median P95
+latency decreased **22.4%**. The performance knee remained at 96, so the
+recommended performance-safe local tier remains **concurrency 64**.
+
+Read the [project-level evaluation report](evals/FINAL_EVALUATION_REPORT.md)
+for metric definitions, failure boundaries, provenance, cost scope, and claim
+limitations. The [v2/v3 controlled comparison](evals/CAPACITY_V2_V3_COMPARISON.md)
+contains the optimization analysis.
 
 ## Quick start with Docker
 
@@ -150,11 +205,13 @@ pnpm build
 
 API tests mock S3 and OpenAI, so they require no cloud credentials and incur no model cost. GitHub Actions runs the same checks for pull requests and pushes to `main`.
 
-## Offline workflow evaluation
+## Reproduce the evaluation
 
 The deterministic workflow harness runs the real `ImageService` orchestration against in-memory PostgreSQL, S3, OpenAI Vision, and OpenAI Images substitutes. It measures normal-path completion, injected-failure containment, database/object consistency, orphaned outputs, and concurrency without cloud calls or fees.
 
 Evaluation protocol `1.0.0` is frozen at tag `workflow-eval-v1.0.0`; the tracked manifest locks the dataset hash, ordered case IDs, and acceptance gates.
+
+### Workflow correctness
 
 ```bash
 .venv/bin/python -m evals.validation
@@ -165,7 +222,79 @@ Evaluation protocol `1.0.0` is frozen at tag `workflow-eval-v1.0.0`; the tracked
 
 Generated evidence is written under ignored `evals/results/` directories. Metric definitions and acceptance rules are documented in [`evals/EVALUATION_PROTOCOL.md`](evals/EVALUATION_PROTOCOL.md). Fake-service latency is not production latency.
 
-The separately versioned live smoke protocol is frozen at tag `live-smoke-v1.0.0`. It verifies the real PostgreSQL, S3, OpenAI, and Langfuse integration under an explicit model-cost ceiling. See [`evals/LIVE_SMOKE_PROTOCOL.md`](evals/LIVE_SMOKE_PROTOCOL.md); it requires a free preflight and an explicit paid-call confirmation.
+### Paid live integration smoke
+
+The separately versioned live protocol verifies real PostgreSQL, S3, OpenAI,
+and Langfuse under an explicit cost ceiling. Keep the reference object key out
+of source control and tracked artifacts by supplying it only at runtime:
+
+```bash
+export LIVE_SMOKE_REFERENCE_OBJECT_KEY='uploads/your-existing-reference.png'
+
+# Free preflight; this makes no model call.
+.venv/bin/python -m evals.run_live_smoke --validate-only
+
+# Explicitly authorized paid run, capped at $0.30.
+.venv/bin/python -m evals.run_live_smoke \
+  --confirm-cloud-spend \
+  --maximum-cost-usd 0.30 \
+  --fail-on-gate
+```
+
+See [`evals/LIVE_SMOKE_PROTOCOL.md`](evals/LIVE_SMOKE_PROTOCOL.md) before
+running the paid command.
+
+### Frozen deterministic load baseline
+
+```bash
+docker compose --profile evaluation up -d --build --wait load-api
+
+.venv/bin/python -m evals.run_load --validate-only
+.venv/bin/python -m evals.run_load \
+  --concurrencies 1,4,8,16 \
+  --requests-per-tier 40 \
+  --warmup-requests 5 \
+  --timeout-seconds 30 \
+  --fail-on-gate
+```
+
+This profile uses one Uvicorn worker, real PostgreSQL, and deterministic local
+S3/OpenAI substitutes. The canonical parameters and acceptance gates are in
+[`evals/LOAD_PROTOCOL.md`](evals/LOAD_PROTOCOL.md).
+
+### Frozen capacity baseline
+
+```bash
+docker compose --profile capacity up -d --build --wait capacity-api
+
+.venv/bin/python -m evals.run_capacity --validate-only
+.venv/bin/python -m evals.run_capacity \
+  --concurrencies 1,4,8,16,32,64 \
+  --requests-per-tier 200 \
+  --warmup-requests 5 \
+  --timeout-seconds 30 \
+  --sample-interval-seconds 0.1 \
+  --fail-on-gate
+```
+
+Higher-concurrency breakpoint and optimization experiments have separate
+services and frozen protocols:
+
+```bash
+# Reproduce the v3 connection-pool experiment.
+docker compose --profile capacity-v3 up -d --build --wait capacity-v3-api
+
+.venv/bin/python -m evals.run_capacity_v3 \
+  --mode full \
+  --fail-on-gate
+```
+
+An overload-search run may return non-zero after safely preserving a measured
+failure; that is a capacity observation, not automatically an infrastructure
+failure. Read [`evals/CAPACITY_PROTOCOL.md`](evals/CAPACITY_PROTOCOL.md),
+[`evals/CAPACITY_V2_EXPERIMENT.md`](evals/CAPACITY_V2_EXPERIMENT.md), and
+[`evals/CAPACITY_V3_EXPERIMENT.md`](evals/CAPACITY_V3_EXPERIMENT.md) before
+interpreting or comparing results.
 
 ## Observability
 
@@ -197,3 +326,11 @@ Langfuse already has managed pricing for `gpt-4.1-mini`. The project image model
 - Rate limiting, content moderation, and model-cost quotas are not implemented.
 - The project does not currently provide RAG or vector retrieval.
 - Docker Compose targets local demonstration, not highly available production deployment.
+- Load and capacity figures use one local Uvicorn worker, real PostgreSQL, and
+  deterministic provider stubs; they are not production OpenAI/S3 capacity or
+  production SLO claims.
+- Live Smoke contains four paid cases, which verifies integration behavior but
+  cannot establish production availability or stable latency percentiles.
+- Capacity runs are burst experiments rather than long-duration soak tests;
+  multi-worker, multi-host, autoscaling, and connection-aging behavior remain
+  outside the measured scope.

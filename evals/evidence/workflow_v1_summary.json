@@ -1,0 +1,71 @@
+{
+  "evidence_type": "retrospective_privacy_safe_aggregate",
+  "published_after_protocol_freeze": true,
+  "source_result": "20261017T222805Z_workflow_smoke_v1",
+  "protocol_version": "1.0.0",
+  "protocol_status": "frozen",
+  "protocol_git_tag": "workflow-eval-v1.0.0",
+  "implementation_baseline_commit": "e1972c904579c960372d34053653834cf31ff362",
+  "source_commit": "ed1e14903cde5ebec4603d3ffbf8179fe7799870",
+  "source_worktree_dirty": false,
+  "dataset": {
+    "path": "evals/datasets/workflow_smoke_v1.jsonl",
+    "sha256": "b17df2e5c7711fa7abd4389ca14bcfb756854d19eb4f868b1176819604d4c464",
+    "case_count": 12
+  },
+  "environment": {
+    "offline": true,
+    "cloud_calls": false,
+    "langfuse_tracing": false,
+    "concurrency": 4
+  },
+  "result": {
+    "run_count": 12,
+    "evaluated_count": 12,
+    "overall_passed": true,
+    "scenario_expectation_rate": 1.0,
+    "normal_path_task_success_rate": 1.0,
+    "external_failure_containment_rate": 1.0,
+    "validation_rejection_rate": 1.0,
+    "database_failure_recovery_rate": 1.0,
+    "state_consistency_rate": 1.0,
+    "orphan_output_count": 0,
+    "unexpected_pending_count": 0,
+    "post_commit_response_failure_count": 1,
+    "database_failure_case_count": 1
+  },
+  "outcome_counts": {
+    "completed": 2,
+    "handled_failure": 8,
+    "infrastructure_failure": 1,
+    "rejected": 1
+  },
+  "database_status_counts": {
+    "completed": 3,
+    "failed": 8,
+    "none": 1
+  },
+  "latency_ms": {
+    "sample_count": 12,
+    "mean": 36.712,
+    "p50_nearest_rank": 29.635,
+    "p95_nearest_rank": 100.38,
+    "min": 0.007,
+    "max": 100.38
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "raw_results_tracked": false,
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes"
+    ]
+  },
+  "interpretation": "All 12 designed scenarios matched their labels. Only two cases were normal paths; injected failures were scored by containment, compensation, and terminal-state consistency rather than counted as task failures. Latency is deterministic offline harness latency and must not be presented as production API latency.",
+  "provenance_note": "This aggregate was published after protocol freeze from the clean frozen-tag run. It does not alter the original manifest, dataset, protocol, source result, or Git tag."
+}
