@@ -62,6 +62,20 @@ API and database success and shows directionally better concurrency-96
 throughput or P95 latency than the frozen v2 primary run. One pilot is not
 enough to claim durable improvement; step 9 requires repeated full validation.
 
+## Pilot result
+
+The clean pilot at `20261018T012504Z` passed every acceptance gate with 2,000
+measured requests and 128 warm-ups. At concurrency 64, v3 remained close to the
+frozen v2 baseline: throughput changed by -2.2% and P95 by +6.8%. At concurrency
+96, API and database success reached 100%, throughput improved from 68.018 to
+155.791 RPS (+129%), and P95 fell from 4,690.003 to 2,038.004 ms (-56.5%).
+
+The decision rule is satisfied, so v3 may proceed to step-9 full validation.
+The 96 tier still had 16.5% less throughput and 213.1% higher P95 than the v3
+64 tier. The larger pool is therefore an important contributor, but it does not
+eliminate the scaling knee. The tracked pilot aggregate is
+`evals/evidence/capacity_v3_pilot_summary.json`.
+
 ## Limits
 
 This local, network-free experiment cannot establish production capacity or

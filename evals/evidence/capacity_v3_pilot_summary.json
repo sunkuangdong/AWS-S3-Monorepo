@@ -1,0 +1,99 @@
+{
+  "evidence_type": "privacy_safe_capacity_optimization_pilot",
+  "run_at": "2026-10-18T01:25:04.833168+00:00",
+  "source_result": "20261018T012504Z_capacity_v3_pilot",
+  "protocol_version": "3.0.0",
+  "protocol_status": "candidate",
+  "implementation_commit": "c508a7007464e6f9edc820895a6ca3ef33222b6a",
+  "source_worktree_dirty": false,
+  "mode": "pilot",
+  "single_variable_change": {
+    "name": "sqlalchemy_connection_pool_capacity",
+    "v2_pool_size": 5,
+    "v2_max_overflow": 10,
+    "v3_pool_size": 20,
+    "v3_max_overflow": 20,
+    "business_logic_changed": false,
+    "uvicorn_worker_count_changed": false,
+    "provider_stub_latency_changed": false
+  },
+  "workload": {
+    "concurrencies": [64, 96],
+    "requests_per_tier": 1000,
+    "warmup_requests_per_tier": 64,
+    "measured_count": 2000,
+    "warmup_count": 128,
+    "cloud_calls": false,
+    "cost_usd": 0.0
+  },
+  "result": {
+    "overall_passed": true,
+    "stopped_reason": null,
+    "api_success_rate": 1.0,
+    "database_consistency_rate": 1.0,
+    "database_record_count": 2128,
+    "server_error_count": 0,
+    "transport_error_count": 0,
+    "verification_retry_attempted": 1,
+    "verification_retry_recovered": 1,
+    "decision": "proceed_to_full_capacity_v3_validation"
+  },
+  "tiers": [
+    {
+      "concurrency": 64,
+      "success_rate": 1.0,
+      "throughput_rps": 186.591,
+      "p95_latency_ms": 650.839,
+      "average_cpu_percent": 56.201,
+      "maximum_memory_mib": 127.254,
+      "maximum_postgresql_connections": 18,
+      "maximum_active_postgresql_connections": 1,
+      "maximum_pool_checked_out": 15,
+      "maximum_pool_overflow": 0
+    },
+    {
+      "concurrency": 96,
+      "success_rate": 1.0,
+      "throughput_rps": 155.791,
+      "p95_latency_ms": 2038.004,
+      "average_cpu_percent": 59.422,
+      "maximum_memory_mib": 134.301,
+      "maximum_postgresql_connections": 39,
+      "maximum_active_postgresql_connections": 2,
+      "maximum_pool_checked_out": 29,
+      "maximum_pool_overflow": 20
+    }
+  ],
+  "comparison_to_frozen_v2_primary": {
+    "concurrency_64": {
+      "throughput_change_ratio": -0.022,
+      "p95_latency_change_ratio": 0.068,
+      "success_rate_change": 0.0
+    },
+    "concurrency_96": {
+      "throughput_change_ratio": 1.29,
+      "p95_latency_change_ratio": -0.565,
+      "success_rate_change": 0.002
+    },
+    "interpretation": "The unchanged concurrency-64 baseline and large concurrency-96 improvement support the pool-capacity hypothesis, but one pilot cannot establish a durable causal effect."
+  },
+  "remaining_signal": {
+    "concurrency_96_still_saturated_relative_to_v3_concurrency_64": true,
+    "throughput_change_from_v3_concurrency_64": -0.165,
+    "p95_latency_change_from_v3_concurrency_64": 2.131,
+    "interpretation": "The larger pool removes formal request failures and substantially improves the v2 breakpoint, but does not eliminate the scaling knee."
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes",
+      "host identifiers"
+    ]
+  }
+}
