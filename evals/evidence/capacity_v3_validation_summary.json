@@ -1,0 +1,203 @@
+{
+  "evidence_type": "privacy_safe_capacity_optimization_validation",
+  "validation_status": "complete_not_frozen",
+  "protocol_version": "3.0.0",
+  "protocol_status": "candidate",
+  "implementation_commit": "e02511c91102d7138cc436e8d97c01de90d65b97",
+  "source_worktree_dirty": false,
+  "single_variable_change": {
+    "name": "sqlalchemy_connection_pool_capacity",
+    "v2_pool_size": 5,
+    "v2_max_overflow": 10,
+    "v3_pool_size": 20,
+    "v3_max_overflow": 20,
+    "business_logic_changed": false,
+    "uvicorn_worker_count_changed": false,
+    "provider_stub_latency_changed": false
+  },
+  "environment": {
+    "uvicorn_workers": 1,
+    "real_postgresql": true,
+    "cloud_calls": false,
+    "langfuse_tracing": false,
+    "requests_per_tier": 1000,
+    "warmup_requests_per_tier": 64,
+    "planned_concurrencies": [64, 96, 128, 192, 256],
+    "image_stub_latency_ms": 250,
+    "verification_transport_retries": 1,
+    "measured_post_retries": 0
+  },
+  "runs": [
+    {
+      "source_result": "20261018T210412Z_capacity_v3",
+      "measured_count": 5000,
+      "warmup_count": 320,
+      "first_performance_candidate": 96,
+      "first_request_failure_tier": 256,
+      "stopped_reason": "measured_failure_at_concurrency_256",
+      "transport_error_count": 2,
+      "server_error_count": 0
+    },
+    {
+      "source_result": "20261018T210607Z_capacity_v3",
+      "measured_count": 3000,
+      "warmup_count": 192,
+      "first_performance_candidate": 96,
+      "first_request_failure_tier": 128,
+      "stopped_reason": "measured_failure_at_concurrency_128",
+      "transport_error_count": 2,
+      "server_error_count": 0
+    },
+    {
+      "source_result": "20261018T210729Z_capacity_v3",
+      "measured_count": 3000,
+      "warmup_count": 192,
+      "first_performance_candidate": 96,
+      "first_request_failure_tier": 128,
+      "stopped_reason": "measured_failure_at_concurrency_128",
+      "transport_error_count": 5,
+      "server_error_count": 0
+    }
+  ],
+  "aggregate": {
+    "run_count": 3,
+    "measured_request_count": 11000,
+    "measured_success_count": 10991,
+    "measured_success_rate": 0.999181818182,
+    "executed_warmup_count": 704,
+    "persisted_record_count": 11695,
+    "attempted_record_count": 11704,
+    "database_consistency_rate": 0.999231032126,
+    "transport_error_count": 9,
+    "server_error_count": 0,
+    "cloud_calls": false,
+    "cost_usd": 0.0,
+    "all_runs_identified_concurrency_96_as_first_performance_candidate": true,
+    "all_concurrency_64_and_96_requests_succeeded": true,
+    "request_failures_reproduced_at_concurrency_128": true,
+    "request_failure_reproduction_count_at_concurrency_128": 2,
+    "request_failure_reproduction_run_count": 3
+  },
+  "repeated_tiers": {
+    "concurrency_64": {
+      "run_count": 3,
+      "request_count": 3000,
+      "success_rate": 1.0,
+      "database_consistency_rate": 1.0,
+      "throughput_rps": {
+        "minimum": 146.805,
+        "median": 165.947,
+        "maximum": 175.598
+      },
+      "p95_latency_ms": {
+        "minimum": 773.29,
+        "median": 897.125,
+        "maximum": 1070.643
+      },
+      "maximum_pool_checked_out_range": [8, 12],
+      "maximum_pool_overflow": 1
+    },
+    "concurrency_96": {
+      "run_count": 3,
+      "request_count": 3000,
+      "success_rate": 1.0,
+      "database_consistency_rate": 1.0,
+      "throughput_rps": {
+        "minimum": 71.632,
+        "median": 80.569,
+        "maximum": 97.048
+      },
+      "p95_latency_ms": {
+        "minimum": 3135.054,
+        "median": 3375.503,
+        "maximum": 4179.412
+      },
+      "average_cpu_percent_range": [34.407, 43.145],
+      "maximum_memory_mib_range": [128.289, 133.703],
+      "maximum_postgresql_active_connections": 2,
+      "maximum_pool_checked_out_range": [38, 39],
+      "maximum_pool_overflow": 20
+    },
+    "concurrency_128": {
+      "run_count": 3,
+      "request_count": 3000,
+      "success_count": 2993,
+      "success_rate": 0.997666666667,
+      "runs_with_request_failures": 2,
+      "transport_error_count": 7,
+      "throughput_rps": {
+        "minimum": 58.606,
+        "median": 59.47,
+        "maximum": 69.973
+      },
+      "p95_latency_ms": {
+        "minimum": 4938.8,
+        "median": 5359.247,
+        "maximum": 5567.396
+      },
+      "maximum_pool_checked_out": 39,
+      "maximum_pool_overflow": 20
+    },
+    "concurrency_192": {
+      "run_count": 1,
+      "request_count": 1000,
+      "success_rate": 1.0,
+      "insufficient_for_repeatability_claim": true
+    },
+    "concurrency_256": {
+      "run_count": 1,
+      "request_count": 1000,
+      "success_rate": 0.998,
+      "transport_error_count": 2,
+      "insufficient_for_repeatability_claim": true
+    }
+  },
+  "comparison_to_frozen_v2_repeated_medians": {
+    "concurrency_64": {
+      "v2_median_throughput_rps": 165.91,
+      "v3_median_throughput_rps": 165.947,
+      "throughput_change_ratio": 0.000223,
+      "v2_median_p95_latency_ms": 804.597,
+      "v3_median_p95_latency_ms": 897.125,
+      "p95_change_ratio": 0.114999,
+      "interpretation": "Baseline throughput was effectively unchanged while P95 varied upward by 11.5%."
+    },
+    "concurrency_96": {
+      "v2_median_success_rate": 0.999,
+      "v3_median_success_rate": 1.0,
+      "v2_fully_successful_run_count": 1,
+      "v3_fully_successful_run_count": 3,
+      "run_count_per_version": 3,
+      "v2_median_throughput_rps": 70.147,
+      "v3_median_throughput_rps": 80.569,
+      "throughput_change_ratio": 0.148574,
+      "v2_median_p95_latency_ms": 4352.453,
+      "v3_median_p95_latency_ms": 3375.503,
+      "p95_change_ratio": -0.22446,
+      "interpretation": "The larger pool improved repeated concurrency-96 reliability, median throughput, and median P95, but did not eliminate the performance knee."
+    }
+  },
+  "conclusion": {
+    "pool_capacity_hypothesis": "supported_but_not_sufficient",
+    "highest_repeated_fully_reliable_tier": 96,
+    "recommended_performance_safe_tier": 64,
+    "first_repeated_performance_saturation_candidate": 96,
+    "first_reproduced_request_failure_tier": 128,
+    "freeze_recommendation": "freeze_v3_as_an_optimization_result_with_limits",
+    "reason": "Increasing the pool moved repeated formal request failures above concurrency 96 and improved concurrency-96 medians, while the pool still saturated and tail latency still rose sharply at 96."
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "raw_results_tracked": false,
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes",
+      "host identifiers"
+    ]
+  }
+}

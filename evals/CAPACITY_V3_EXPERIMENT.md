@@ -76,6 +76,35 @@ The 96 tier still had 16.5% less throughput and 213.1% higher P95 than the v3
 eliminate the scaling knee. The tracked pilot aggregate is
 `evals/evidence/capacity_v3_pilot_summary.json`.
 
+## Full repeated validation
+
+Step 9 executed three clean full-mode runs from implementation commit
+`e02511c91102d7138cc436e8d97c01de90d65b97`. All runs used the same one-worker
+service, real PostgreSQL, deterministic provider stubs, and `20 + 20`
+SQLAlchemy pool configuration. Across the three runs, 11,000 measured requests
+and 704 executed warm-ups incurred no cloud calls and no cost.
+
+Concurrency 64 and 96 completed 3,000/3,000 measured requests with matching
+database state. Every run identified 96 as the first performance-saturation
+candidate. Relative to the three frozen v2 runs, the concurrency-96 median
+throughput increased from 70.147 to 80.569 RPS (+14.9%), median P95 decreased
+from 4,352.453 to 3,375.503 ms (-22.4%), and fully successful runs increased
+from one of three to three of three.
+
+The optimization did not remove the scaling knee. The pool reached 38--39
+checked-out connections and its overflow ceiling of 20 at concurrency 96 in
+all three runs. Two runs reproduced formal transport failures at concurrency
+128; the other reached concurrency 256 before two such failures. The full-run
+correctness gate is therefore intentionally false after safe stopping, just as
+an overload-search protocol should preserve failures rather than retry or hide
+them.
+
+The evidence supports a repeated correctness lower bound of 96, but 64 remains
+the recommended performance-safe tier because P95 still rises sharply at 96.
+The reviewed candidate aggregate is
+`evals/evidence/capacity_v3_validation_summary.json`. Freezing and tagging this
+result are reserved for step 10.
+
 ## Limits
 
 This local, network-free experiment cannot establish production capacity or
