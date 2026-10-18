@@ -75,7 +75,11 @@ protocol samples cgroup CPU and memory plus PostgreSQL connection activity
 without modifying frozen Load v1. Its evidence establishes a tested local lower
 bound, not a maximum-capacity or production-SLO claim.
 
-Candidate [`CAPACITY_V2_EXPERIMENT.md`](CAPACITY_V2_EXPERIMENT.md) continues
+Frozen [`CAPACITY_V2_EXPERIMENT.md`](CAPACITY_V2_EXPERIMENT.md) v2.0.0 continues
 from concurrency 64 through 256 using a separate `capacity-v2-api` service on
 port 8003. It normalizes marginal throughput gain by the change in concurrency
-to locate a scaling knee without changing frozen Capacity v1 artifacts.
+to locate a scaling knee without changing frozen Capacity v1 artifacts. The
+tracked evidence identifies concurrency 96 as the first reproducible saturation
+candidate and retains 64 as the highest fully reliable tested tier. See
+[`CAPACITY_V1_V2_COMPARISON.md`](CAPACITY_V1_V2_COMPARISON.md) for the bounded
+comparison and limitations.

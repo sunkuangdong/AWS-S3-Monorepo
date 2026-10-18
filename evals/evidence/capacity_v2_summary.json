@@ -1,0 +1,175 @@
+{
+  "evidence_type": "privacy_safe_capacity_breakpoint_aggregate",
+  "run_at": "2026-10-18T01:12:46.816814+00:00",
+  "source_result": "20261018T011246Z_capacity_v2",
+  "source_protocol_status": "candidate",
+  "protocol_version": "2.0.0",
+  "implementation_baseline_commit": "24b087bf3bb3443ee98daf46328d560cb004efb7",
+  "source_worktree_dirty": false,
+  "environment": {
+    "application": "evals.capacity_v2_app:app",
+    "uvicorn_workers": 1,
+    "real_postgresql": true,
+    "cloud_calls": false,
+    "langfuse_tracing": false,
+    "resource_sampling_interval_seconds": 0.05,
+    "verification_transport_retries": 1,
+    "stub_delays_ms": {
+      "storage": 0,
+      "vision": 50,
+      "image_generation": 250
+    }
+  },
+  "workload": {
+    "planned_concurrencies": [64, 96, 128, 192, 256],
+    "executed_concurrencies": [64, 96],
+    "requests_per_tier": 1000,
+    "warmup_requests_per_tier": 64,
+    "timeout_seconds": 30.0,
+    "measured_count": 2000,
+    "warmup_count": 128,
+    "safe_stop_enabled": true
+  },
+  "result": {
+    "freeze_criteria_met": true,
+    "overall_correctness_gate": false,
+    "overall_gate_interpretation": "Expected false because the breakpoint protocol safely stopped after measured request failures at concurrency 96.",
+    "stopped_reason": "measured_failure_at_concurrency_96",
+    "cost_usd": 0.0,
+    "baseline_concurrency": 64,
+    "baseline_success_rate": 1.0,
+    "baseline_database_consistency_rate": 1.0,
+    "baseline_throughput_rps": 190.76,
+    "baseline_p95_latency_ms": 609.678,
+    "first_saturation_candidate": 96,
+    "candidate_success_rate": 0.998,
+    "candidate_throughput_rps": 68.018,
+    "candidate_p95_latency_ms": 4690.003,
+    "candidate_transport_error_count": 2,
+    "candidate_error_types": {
+      "RemoteProtocolError": 2
+    },
+    "server_error_count": 0,
+    "successfully_persisted_record_count": 2126,
+    "successfully_persisted_records_completed": 2126,
+    "safe_operating_concurrency_lower_bound": 64,
+    "saturation_status": "candidate_detected_at_concurrency_96"
+  },
+  "tiers": [
+    {
+      "concurrency": 64,
+      "request_count": 1000,
+      "completed_count": 1000,
+      "success_rate": 1.0,
+      "database_consistency_rate": 1.0,
+      "throughput_rps": 190.76,
+      "speedup_vs_baseline": 1.0,
+      "scaling_efficiency": 1.0,
+      "latency_ms": {
+        "mean": 323.007,
+        "p50_nearest_rank": 278.077,
+        "p95_nearest_rank": 609.678,
+        "min": 253.189,
+        "max": 1424.45
+      },
+      "resources": {
+        "sample_count": 81,
+        "average_cpu_percent": 65.875,
+        "maximum_memory_current_mib": 128.773,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 14,
+        "maximum_active_postgresql_connections": 2,
+        "maximum_pool_checked_out": 14,
+        "maximum_pool_overflow": 10
+      },
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 96,
+      "request_count": 1000,
+      "completed_count": 998,
+      "success_rate": 0.998,
+      "database_consistency_rate": 0.998,
+      "throughput_rps": 68.018,
+      "speedup_vs_baseline": 0.357,
+      "scaling_efficiency": 0.238,
+      "marginal_throughput_gain": -0.643,
+      "marginal_concurrency_gain": 0.5,
+      "marginal_scaling_efficiency": -1.287,
+      "p95_latency_growth": 6.693,
+      "latency_ms": {
+        "mean": 1369.144,
+        "p50_nearest_rank": 739.006,
+        "p95_nearest_rank": 4690.003,
+        "min": 274.861,
+        "max": 6044.459
+      },
+      "resources": {
+        "sample_count": 87,
+        "average_cpu_percent": 39.945,
+        "maximum_memory_current_mib": 134.777,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 14,
+        "maximum_active_postgresql_connections": 4,
+        "maximum_pool_checked_out": 14,
+        "maximum_pool_overflow": 10
+      },
+      "saturation_signals": [
+        "marginal_scaling_efficiency_below_50_percent",
+        "p95_growth_above_50_percent",
+        "scaling_efficiency_below_50_percent",
+        "request_failures"
+      ]
+    }
+  ],
+  "repeatability": {
+    "run_count": 3,
+    "all_runs_identified_concurrency_96_as_a_saturation_candidate": true,
+    "runs": [
+      {
+        "source_result": "20261018T010213Z_capacity_v2",
+        "implementation_commit": "8d3ed389fbe370c46d8dd98aff77f1bd42e5d07d",
+        "concurrency_64_success_rate": 1.0,
+        "concurrency_64_throughput_rps": 165.91,
+        "concurrency_64_p95_latency_ms": 804.597,
+        "concurrency_96_success_rate": 0.999,
+        "concurrency_96_throughput_rps": 70.147,
+        "concurrency_96_p95_latency_ms": 4352.453
+      },
+      {
+        "source_result": "20261018T010858Z_capacity_v2",
+        "implementation_commit": "32c43a97574aea4f46b10bb18dff69a447f5bcb0",
+        "concurrency_64_success_rate": 1.0,
+        "concurrency_64_throughput_rps": 134.713,
+        "concurrency_64_p95_latency_ms": 1095.36,
+        "concurrency_96_success_rate": 1.0,
+        "concurrency_96_throughput_rps": 102.036,
+        "concurrency_96_p95_latency_ms": 3083.174
+      },
+      {
+        "source_result": "20261018T011246Z_capacity_v2",
+        "implementation_commit": "24b087bf3bb3443ee98daf46328d560cb004efb7",
+        "concurrency_64_success_rate": 1.0,
+        "concurrency_64_throughput_rps": 190.76,
+        "concurrency_64_p95_latency_ms": 609.678,
+        "concurrency_96_success_rate": 0.998,
+        "concurrency_96_throughput_rps": 68.018,
+        "concurrency_96_p95_latency_ms": 4690.003
+      }
+    ]
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes",
+      "host identifiers"
+    ]
+  },
+  "interpretation": "For one local Uvicorn worker, real PostgreSQL, and deterministic network-free provider stubs, concurrency 64 remained fully successful while concurrency 96 was the first reproducible saturation candidate. This is a local safe-operating lower bound and breakpoint observation, not a production SLO, cloud-provider capacity claim, or proof that every concurrency above 96 must perform worse."
+}

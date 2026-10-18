@@ -1,7 +1,8 @@
 {
   "protocol_version": "2.0.0",
-  "status": "candidate",
+  "status": "frozen",
   "created_date": "2026-10-17",
+  "frozen_date": "2026-10-17",
   "runner": {
     "module": "evals.run_capacity_v2",
     "application_module": "evals.capacity_v2_app:app",
@@ -71,5 +72,11 @@
     "resource_metrics_collected",
     "monitoring_errors_absent",
     "overall"
-  ]
+  ],
+  "freeze": {
+    "git_tag": "capacity-eval-v2.0.0",
+    "implementation_baseline_commit": "24b087bf3bb3443ee98daf46328d560cb004efb7",
+    "evidence_path": "evals/evidence/capacity_v2_summary.json",
+    "evidence_sha256": "bedcf7408f014f64e495df3875054779d505f4d6d82163f85ee66ce3169b9574"
+  }
 }

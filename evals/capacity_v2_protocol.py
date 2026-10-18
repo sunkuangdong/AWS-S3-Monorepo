@@ -6,10 +6,19 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evals.dataset import dataset_sha256
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CAPACITY_V2_MANIFEST = PROJECT_ROOT / "evals/capacity_protocol_v2.json"
 CAPACITY_V2_PROTOCOL_VERSION = "2.0.0"
-CAPACITY_V2_PROTOCOL_STATUS = "candidate"
+CAPACITY_V2_PROTOCOL_STATUS = "frozen"
+CAPACITY_V2_GIT_TAG = "capacity-eval-v2.0.0"
+CAPACITY_V2_IMPLEMENTATION_BASELINE_COMMIT = (
+    "24b087bf3bb3443ee98daf46328d560cb004efb7"
+)
+CAPACITY_V2_EVIDENCE = (
+    PROJECT_ROOT / "evals/evidence/capacity_v2_summary.json"
+)
 
 REQUIRED_ACCEPTANCE_GATES = (
     "preflight_passed",
@@ -51,7 +60,7 @@ def validate_capacity_v2_protocol(
     if manifest.get("protocol_version") != CAPACITY_V2_PROTOCOL_VERSION:
         errors.append("Capacity v2 manifest version does not match the runner")
     if manifest.get("status") != CAPACITY_V2_PROTOCOL_STATUS:
-        errors.append("Capacity v2 manifest must remain candidate until frozen")
+        errors.append("Capacity v2 manifest status does not match the runner")
 
     runner = manifest.get("runner", {})
     expected_runner = {
@@ -97,6 +106,53 @@ def validate_capacity_v2_protocol(
         REQUIRED_ACCEPTANCE_GATES
     ):
         errors.append("Capacity v2 acceptance gates do not match the runner")
+
+    freeze = manifest.get("freeze", {})
+    if freeze.get("git_tag") != CAPACITY_V2_GIT_TAG:
+        errors.append("Git tag does not match frozen Capacity v2")
+    if (
+        freeze.get("implementation_baseline_commit")
+        != CAPACITY_V2_IMPLEMENTATION_BASELINE_COMMIT
+    ):
+        errors.append("implementation baseline does not match Capacity v2")
+    expected_evidence_path = str(CAPACITY_V2_EVIDENCE.relative_to(PROJECT_ROOT))
+    if freeze.get("evidence_path") != expected_evidence_path:
+        errors.append("evidence path does not match frozen Capacity v2")
+    if not CAPACITY_V2_EVIDENCE.is_file():
+        errors.append("frozen aggregate Capacity v2 evidence is missing")
+    elif dataset_sha256(CAPACITY_V2_EVIDENCE) != freeze.get("evidence_sha256"):
+        errors.append("aggregate Capacity v2 evidence SHA-256 does not match")
+    else:
+        evidence = json.loads(CAPACITY_V2_EVIDENCE.read_text(encoding="utf-8"))
+        result = evidence.get("result", {})
+        repeatability = evidence.get("repeatability", {})
+        if evidence.get("protocol_version") != CAPACITY_V2_PROTOCOL_VERSION:
+            errors.append("aggregate Capacity v2 evidence version does not match")
+        if (
+            evidence.get("implementation_baseline_commit")
+            != CAPACITY_V2_IMPLEMENTATION_BASELINE_COMMIT
+        ):
+            errors.append("aggregate Capacity v2 evidence baseline does not match")
+        if evidence.get("source_worktree_dirty") is not False:
+            errors.append("aggregate Capacity v2 evidence must use a clean worktree")
+        if result.get("freeze_criteria_met") is not True:
+            errors.append("aggregate Capacity v2 freeze criteria were not met")
+        if result.get("baseline_concurrency") != 64:
+            errors.append("aggregate Capacity v2 baseline does not match")
+        if result.get("baseline_success_rate") != 1.0:
+            errors.append("aggregate Capacity v2 baseline did not fully pass")
+        if result.get("first_saturation_candidate") != 96:
+            errors.append("aggregate Capacity v2 breakpoint does not match")
+        if result.get("stopped_reason") != "measured_failure_at_concurrency_96":
+            errors.append("aggregate Capacity v2 stop reason does not match")
+        if result.get("saturation_status") != (
+            "candidate_detected_at_concurrency_96"
+        ):
+            errors.append("aggregate Capacity v2 saturation status does not match")
+        if repeatability.get("run_count") != 3 or repeatability.get(
+            "all_runs_identified_concurrency_96_as_a_saturation_candidate"
+        ) is not True:
+            errors.append("aggregate Capacity v2 repeatability evidence is incomplete")
 
     if preflight_result is not None:
         if preflight_result.get("cloud_calls_enabled") is not False:

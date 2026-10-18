@@ -3,6 +3,7 @@ from typing import Any
 import httpx
 import pytest
 from evals.capacity_v2_protocol import (
+    CAPACITY_V2_IMPLEMENTATION_BASELINE_COMMIT,
     CAPACITY_V2_PROTOCOL_STATUS,
     CAPACITY_V2_PROTOCOL_VERSION,
     REQUIRED_ACCEPTANCE_GATES,
@@ -22,7 +23,7 @@ def _capacity_v2_status() -> dict[str, Any]:
     return {
         "capacity_v2_test": True,
         "protocol_version": "2.0.0",
-        "protocol_status": "candidate",
+        "protocol_status": "frozen",
         "cloud_calls_enabled": False,
         "langfuse_tracing_enabled": False,
         "real_postgresql_enabled": True,
@@ -77,10 +78,20 @@ async def test_capacity_v2_preflight_locks_identity_and_cloud_isolation() -> Non
     )
     assert result["resource_metrics_available"] is True
     assert manifest["protocol_version"] == CAPACITY_V2_PROTOCOL_VERSION == "2.0.0"
-    assert manifest["status"] == CAPACITY_V2_PROTOCOL_STATUS == "candidate"
+    assert manifest["status"] == CAPACITY_V2_PROTOCOL_STATUS == "frozen"
     assert manifest["required_acceptance_gates"] == list(
         REQUIRED_ACCEPTANCE_GATES
     )
+    assert manifest["freeze"] == {
+        "git_tag": "capacity-eval-v2.0.0",
+        "implementation_baseline_commit": (
+            CAPACITY_V2_IMPLEMENTATION_BASELINE_COMMIT
+        ),
+        "evidence_path": "evals/evidence/capacity_v2_summary.json",
+        "evidence_sha256": (
+            "bedcf7408f014f64e495df3875054779d505f4d6d82163f85ee66ce3169b9574"
+        ),
+    }
 
 
 def test_capacity_v2_protocol_rejects_parameter_drift() -> None:

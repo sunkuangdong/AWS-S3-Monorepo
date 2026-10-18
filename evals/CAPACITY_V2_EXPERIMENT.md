@@ -1,8 +1,28 @@
-# Capacity v2 Breakpoint Experiment
+# Frozen Capacity v2 Breakpoint Evaluation Protocol
 
-Status: **CANDIDATE**
+Status: **FROZEN**
 
 Protocol version: `2.0.0`
+
+## Frozen identity
+
+- Frozen on: `2026-10-17`
+- Canonical Git tag: `capacity-eval-v2.0.0`
+- Measured implementation baseline: `24b087bf3bb3443ee98daf46328d560cb004efb7`
+- Machine-readable manifest: `evals/capacity_protocol_v2.json`
+- Privacy-safe aggregate evidence: `evals/evidence/capacity_v2_summary.json`
+- Primary source result: `evals/results/20261018T011246Z_capacity_v2`
+- Comparison report: `evals/CAPACITY_V1_V2_COMPARISON.md`
+
+The tag is the canonical frozen source snapshot. The measured implementation
+baseline identifies the exact clean commit used by the primary result; the
+freeze commit adds only tracked evidence, documentation, identity checks, and
+frozen metadata.
+
+The primary run intentionally has an aggregate correctness gate of `false`:
+the protocol safely stopped after two formal POST transport failures at
+concurrency 96. Freeze success means the experiment produced a valid baseline
+and reproducible breakpoint, not that all planned tiers passed.
 
 ## Purpose
 
@@ -12,7 +32,7 @@ starts at the previously tested concurrency-64 boundary and continues through
 manifest, application, Compose service, port, runner, and result suffix, so it
 cannot overwrite frozen Capacity v1 evidence.
 
-## Locked candidate workload
+## Locked workload
 
 - concurrency tiers: `64, 96, 128, 192, 256`;
 - 64 warm-up and 1,000 measured requests per tier;
@@ -73,8 +93,12 @@ docker compose --profile capacity-v2 up -d --build --wait capacity-v2-api
   --fail-on-gate
 ```
 
-Raw results remain ignored under `evals/results/`. Only a reviewed,
-privacy-safe aggregate may be tracked if this candidate is later frozen.
+Raw results remain ignored under `evals/results/`. The reviewed, privacy-safe
+aggregate is tracked at `evals/evidence/capacity_v2_summary.json`.
+
+Capacity v2 does not replace Capacity v1 evidence. Capacity v1 establishes the
+passing lower bound through 64; Capacity v2 locates the first saturation
+candidate above that boundary.
 
 ## Interpretation limits
 
