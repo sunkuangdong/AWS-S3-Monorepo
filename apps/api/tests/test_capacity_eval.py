@@ -4,7 +4,13 @@ from typing import Any
 import httpx
 import pytest
 from evals.capacity_metrics import read_cgroup_v2_metrics
-from evals.capacity_protocol import validate_capacity_protocol
+from evals.capacity_protocol import (
+    CAPACITY_IMPLEMENTATION_BASELINE_COMMIT,
+    CAPACITY_PROTOCOL_STATUS,
+    CAPACITY_PROTOCOL_VERSION,
+    REQUIRED_ACCEPTANCE_GATES,
+    validate_capacity_protocol,
+)
 from evals.capacity_scoring import build_capacity_summary
 from evals.run_capacity import capacity_preflight
 
@@ -43,7 +49,7 @@ def _capacity_status() -> dict[str, Any]:
     return {
         "capacity_test": True,
         "protocol_version": "1.0.0",
-        "protocol_status": "exploratory",
+        "protocol_status": "frozen",
         "cloud_calls_enabled": False,
         "langfuse_tracing_enabled": False,
         "real_postgresql_enabled": True,
@@ -97,7 +103,21 @@ async def test_capacity_preflight_requires_metrics_and_cloud_isolation() -> None
         preflight_result=result,
     )
     assert result["resource_metrics_available"] is True
-    assert manifest["status"] == "exploratory"
+    assert manifest["protocol_version"] == CAPACITY_PROTOCOL_VERSION == "1.0.0"
+    assert manifest["status"] == CAPACITY_PROTOCOL_STATUS == "frozen"
+    assert manifest["required_acceptance_gates"] == list(
+        REQUIRED_ACCEPTANCE_GATES
+    )
+    assert manifest["freeze"] == {
+        "git_tag": "capacity-eval-v1.0.0",
+        "implementation_baseline_commit": (
+            CAPACITY_IMPLEMENTATION_BASELINE_COMMIT
+        ),
+        "evidence_path": "evals/evidence/capacity_v1_summary.json",
+        "evidence_sha256": (
+            "294c329111c10f8a99c0814af2127db40748bbc410f6015045b6ae3d078396f1"
+        ),
+    }
 
 
 def test_capacity_scoring_identifies_first_saturation_signal() -> None:

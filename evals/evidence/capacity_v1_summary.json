@@ -1,0 +1,260 @@
+{
+  "evidence_type": "privacy_safe_aggregate",
+  "run_at": "2026-10-18T00:40:25.778576+00:00",
+  "source_result": "20261018T004025Z_capacity_v1",
+  "source_protocol_status": "exploratory",
+  "protocol_version": "1.0.0",
+  "implementation_baseline_commit": "28edd96acf4848e349f3d4d5d1eccc15218ff7c7",
+  "source_worktree_dirty": false,
+  "environment": {
+    "application": "evals.capacity_app:app",
+    "uvicorn_workers": 1,
+    "real_postgresql": true,
+    "cloud_calls": false,
+    "langfuse_tracing": false,
+    "resource_sampling_interval_seconds": 0.1,
+    "stub_delays_ms": {
+      "storage": 0,
+      "vision": 50,
+      "image_generation": 250
+    }
+  },
+  "workload": {
+    "concurrencies": [
+      1,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "requests_per_tier": 200,
+    "warmup_requests_per_tier": 5,
+    "timeout_seconds": 30.0,
+    "measured_count": 1200,
+    "warmup_count": 30
+  },
+  "result": {
+    "stopped_reason": null,
+    "cost_usd": 0.0,
+    "overall_passed": true,
+    "api_success_rate": 1.0,
+    "database_consistency_rate": 1.0,
+    "server_error_count": 0,
+    "transport_error_count": 0,
+    "maximum_tested_concurrency": 64,
+    "maximum_observed_throughput_rps": 165.047,
+    "p95_latency_ms_at_maximum_concurrency": 511.634,
+    "saturation_status": "not_observed_through_maximum_tested_concurrency"
+  },
+  "tiers": [
+    {
+      "concurrency": 1,
+      "request_count": 200,
+      "throughput_rps": 3.704,
+      "speedup_vs_concurrency_1": 1.0,
+      "scaling_efficiency": 1.0,
+      "max_in_flight": 1,
+      "latency_ms": {
+        "mean": 269.817,
+        "p50_nearest_rank": 267.525,
+        "p95_nearest_rank": 274.589,
+        "min": 258.261,
+        "max": 439.257
+      },
+      "resources": {
+        "sample_count": 491,
+        "average_cpu_percent": 12.021,
+        "maximum_memory_current_mib": 123.652,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 1,
+        "maximum_active_postgresql_connections": 1,
+        "maximum_pool_checked_out": 1,
+        "maximum_pool_overflow": 0
+      },
+      "marginal_throughput_gain": null,
+      "p95_latency_growth": null,
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 4,
+      "request_count": 200,
+      "throughput_rps": 14.452,
+      "speedup_vs_concurrency_1": 3.901,
+      "scaling_efficiency": 0.975,
+      "max_in_flight": 4,
+      "latency_ms": {
+        "mean": 276.446,
+        "p50_nearest_rank": 277.068,
+        "p95_nearest_rank": 284.795,
+        "min": 262.582,
+        "max": 291.198
+      },
+      "resources": {
+        "sample_count": 127,
+        "average_cpu_percent": 17.104,
+        "maximum_memory_current_mib": 123.633,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 4,
+        "maximum_active_postgresql_connections": 2,
+        "maximum_pool_checked_out": 4,
+        "maximum_pool_overflow": 0
+      },
+      "marginal_throughput_gain": 2.902,
+      "p95_latency_growth": 0.037,
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 8,
+      "request_count": 200,
+      "throughput_rps": 27.202,
+      "speedup_vs_concurrency_1": 7.343,
+      "scaling_efficiency": 0.918,
+      "max_in_flight": 8,
+      "latency_ms": {
+        "mean": 293.41,
+        "p50_nearest_rank": 293.348,
+        "p95_nearest_rank": 311.21,
+        "min": 265.525,
+        "max": 328.148
+      },
+      "resources": {
+        "sample_count": 69,
+        "average_cpu_percent": 22.573,
+        "maximum_memory_current_mib": 122.059,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 5,
+        "maximum_active_postgresql_connections": 0,
+        "maximum_pool_checked_out": 5,
+        "maximum_pool_overflow": 3
+      },
+      "marginal_throughput_gain": 0.882,
+      "p95_latency_growth": 0.093,
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 16,
+      "request_count": 200,
+      "throughput_rps": 47.918,
+      "speedup_vs_concurrency_1": 12.936,
+      "scaling_efficiency": 0.808,
+      "max_in_flight": 16,
+      "latency_ms": {
+        "mean": 320.602,
+        "p50_nearest_rank": 320.52,
+        "p95_nearest_rank": 348.046,
+        "min": 282.03,
+        "max": 362.373
+      },
+      "resources": {
+        "sample_count": 39,
+        "average_cpu_percent": 29.396,
+        "maximum_memory_current_mib": 113.258,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 10,
+        "maximum_active_postgresql_connections": 1,
+        "maximum_pool_checked_out": 10,
+        "maximum_pool_overflow": 7
+      },
+      "marginal_throughput_gain": 0.762,
+      "p95_latency_growth": 0.118,
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 32,
+      "request_count": 200,
+      "throughput_rps": 100.944,
+      "speedup_vs_concurrency_1": 27.251,
+      "scaling_efficiency": 0.852,
+      "max_in_flight": 32,
+      "latency_ms": {
+        "mean": 298.713,
+        "p50_nearest_rank": 301.897,
+        "p95_nearest_rank": 342.365,
+        "min": 256.272,
+        "max": 371.808
+      },
+      "resources": {
+        "sample_count": 19,
+        "average_cpu_percent": 51.56,
+        "maximum_memory_current_mib": 126.414,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 10,
+        "maximum_active_postgresql_connections": 1,
+        "maximum_pool_checked_out": 8,
+        "maximum_pool_overflow": 6
+      },
+      "marginal_throughput_gain": 1.107,
+      "p95_latency_growth": -0.016,
+      "saturation_signals": []
+    },
+    {
+      "concurrency": 64,
+      "request_count": 200,
+      "throughput_rps": 165.047,
+      "speedup_vs_concurrency_1": 44.556,
+      "scaling_efficiency": 0.696,
+      "max_in_flight": 64,
+      "latency_ms": {
+        "mean": 337.422,
+        "p50_nearest_rank": 313.495,
+        "p95_nearest_rank": 511.634,
+        "min": 257.423,
+        "max": 542.199
+      },
+      "resources": {
+        "sample_count": 11,
+        "average_cpu_percent": 62.16,
+        "maximum_memory_current_mib": 117.336,
+        "cpu_throttled_usec_maximum": 0,
+        "maximum_postgresql_connections": 11,
+        "maximum_active_postgresql_connections": 1,
+        "maximum_pool_checked_out": 14,
+        "maximum_pool_overflow": 10
+      },
+      "marginal_throughput_gain": 0.635,
+      "p95_latency_growth": 0.494,
+      "saturation_signals": []
+    }
+  ],
+  "database": {
+    "expected_record_count": 1230,
+    "record_count": 1230,
+    "status_counts": {
+      "completed": 1230
+    }
+  },
+  "stub_call_delta": {
+    "storage": {
+      "create_presigned_download_url": 2460,
+      "upload_generated_image": 1230
+    },
+    "vision": {},
+    "image_generation": {
+      "generate_image": 1230
+    }
+  },
+  "saturation_analysis": {
+    "status": "not_observed_through_maximum_tested_concurrency",
+    "first_candidate": null,
+    "heuristics": {
+      "maximum_marginal_throughput_gain": 0.2,
+      "minimum_p95_latency_growth": 0.5,
+      "maximum_scaling_efficiency": 0.5
+    }
+  },
+  "privacy": {
+    "artifact_scan": "clean",
+    "omitted": [
+      "prompts",
+      "request IDs",
+      "generation IDs",
+      "object keys",
+      "presigned URLs",
+      "credentials",
+      "image bytes",
+      "host identifiers"
+    ]
+  },
+  "interpretation": "This frozen evidence establishes a tested local lower bound of 64 concurrent clients and 165.047 requests per second for one Uvicorn worker, real PostgreSQL, and deterministic network-free provider stubs. No saturation candidate was observed through the maximum tested tier. It does not establish maximum capacity, cloud-provider throughput, production availability, or an SLO."
+}

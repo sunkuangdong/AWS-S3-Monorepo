@@ -68,7 +68,9 @@ deterministic stubs, so the run makes no paid cloud calls. The tracked
 safety properties, and acceptance gates. Use `--allow-protocol-deviation` only
 for clearly marked exploratory capacity runs.
 
-[`CAPACITY_EXPERIMENT.md`](CAPACITY_EXPERIMENT.md) defines a separate
-exploratory run through concurrency 64. It uses its own `capacity-api`, port
-8002, manifest, runner, and result suffix. The experiment samples cgroup CPU and
-memory plus PostgreSQL connection activity without modifying frozen Load v1.
+Frozen [`CAPACITY_PROTOCOL.md`](CAPACITY_PROTOCOL.md) v1.0.0 defines a separate
+exploratory capacity evaluation through concurrency 64. It uses its own
+`capacity-api`, port 8002, manifest, runner, evidence, and result suffix. The
+protocol samples cgroup CPU and memory plus PostgreSQL connection activity
+without modifying frozen Load v1. Its evidence establishes a tested local lower
+bound, not a maximum-capacity or production-SLO claim.

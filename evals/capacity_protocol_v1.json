@@ -1,7 +1,7 @@
 {
   "protocol_version": "1.0.0",
-  "status": "exploratory",
-  "created_date": "2026-10-17",
+  "status": "frozen",
+  "frozen_date": "2026-10-17",
   "runner": {
     "module": "evals.run_capacity",
     "application_module": "evals.capacity_app:app",
@@ -44,5 +44,35 @@
     "maximum_marginal_throughput_gain": 0.2,
     "minimum_p95_latency_growth": 0.5,
     "maximum_scaling_efficiency": 0.5
+  },
+  "metrics": {
+    "latency_percentiles": "nearest-rank",
+    "throughput_unit": "completed POST requests per second",
+    "baseline_concurrency": 1,
+    "resource_window": "measured POST batch only",
+    "fixed_performance_thresholds": false
+  },
+  "required_acceptance_gates": [
+    "preflight_passed",
+    "all_warmups_complete",
+    "all_requests_executed",
+    "all_api_requests_complete",
+    "no_server_errors",
+    "database_state_consistent",
+    "all_load_records_found",
+    "all_load_records_completed",
+    "no_unexpected_pending_records",
+    "stub_calls_match_workload",
+    "no_cloud_calls",
+    "run_was_not_stopped",
+    "resource_metrics_collected",
+    "monitoring_errors_absent",
+    "overall"
+  ],
+  "freeze": {
+    "git_tag": "capacity-eval-v1.0.0",
+    "implementation_baseline_commit": "28edd96acf4848e349f3d4d5d1eccc15218ff7c7",
+    "evidence_path": "evals/evidence/capacity_v1_summary.json",
+    "evidence_sha256": "294c329111c10f8a99c0814af2127db40748bbc410f6015045b6ae3d078396f1"
   }
 }
