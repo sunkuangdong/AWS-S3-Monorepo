@@ -92,6 +92,7 @@ def test_capacity_v2_protocol_rejects_parameter_drift() -> None:
 def _tier(concurrency: int, throughput: float, p95: float) -> dict[str, Any]:
     return {
         "concurrency": concurrency,
+        "request_count": 1000,
         "throughput_rps": throughput,
         "success_rate": 1.0,
         "speedup_vs_concurrency_1": 1.0,
@@ -106,6 +107,11 @@ def test_capacity_v2_scoring_finds_normalized_scaling_knee() -> None:
             _tier(64, 160.0, 300.0),
             _tier(96, 220.0, 305.0),
             _tier(128, 230.0, 310.0),
+            {
+                **_tier(192, 0.0, 0.0),
+                "request_count": 0,
+                "success_rate": None,
+            },
         ],
         "acceptance_gates": {"preflight_passed": True, "overall": True},
     }
@@ -139,4 +145,7 @@ def test_capacity_v2_scoring_finds_normalized_scaling_knee() -> None:
     }
     assert summary["tiers"][0]["speedup_vs_baseline"] == 1.0
     assert summary["tiers"][2]["marginal_scaling_efficiency"] == 0.136
+    assert summary["tiers"][3]["executed"] is False
+    assert summary["tiers"][3]["saturation_signals"] == []
+    assert len(summary["saturation_analysis"]["all_candidates"]) == 1
     assert summary["acceptance_gates"]["overall"] is True

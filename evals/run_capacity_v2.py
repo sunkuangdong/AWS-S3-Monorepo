@@ -115,6 +115,8 @@ def _render_report(summary: dict[str, Any], config: dict[str, Any]) -> str:
         "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for tier in summary["tiers"]:
+        if not tier["executed"]:
+            continue
         resources = tier["resources"] or {}
         api = resources.get("api_container", {})
         postgres = resources.get("postgresql", {})

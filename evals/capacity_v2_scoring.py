@@ -38,6 +38,20 @@ def build_capacity_v2_summary(
     previous: dict[str, Any] | None = None
     for tier in summary["tiers"]:
         concurrency = int(tier["concurrency"])
+        executed = int(tier.get("request_count") or 0) > 0
+        tier["executed"] = executed
+        tier["resources"] = resources_by_concurrency.get(concurrency)
+        tier["marginal_throughput_gain"] = None
+        tier["marginal_concurrency_gain"] = None
+        tier["marginal_scaling_efficiency"] = None
+        tier["p95_latency_growth"] = None
+        tier["saturation_signals"] = []
+        if not executed:
+            tier.pop("speedup_vs_concurrency_1", None)
+            tier["speedup_vs_baseline"] = None
+            tier["scaling_efficiency"] = None
+            continue
+
         current_rps = float(tier["throughput_rps"] or 0)
         concurrency_multiplier = concurrency / baseline_concurrency
         speedup = current_rps / baseline_rps
@@ -46,12 +60,6 @@ def build_capacity_v2_summary(
         tier.pop("speedup_vs_concurrency_1", None)
         tier["speedup_vs_baseline"] = _round(speedup)
         tier["scaling_efficiency"] = _round(efficiency)
-        tier["resources"] = resources_by_concurrency.get(concurrency)
-        tier["marginal_throughput_gain"] = None
-        tier["marginal_concurrency_gain"] = None
-        tier["marginal_scaling_efficiency"] = None
-        tier["p95_latency_growth"] = None
-        tier["saturation_signals"] = []
 
         if previous is not None:
             previous_concurrency = int(previous["concurrency"])
@@ -114,8 +122,9 @@ def build_capacity_v2_summary(
 
     gates = summary["acceptance_gates"]
     gates.pop("overall", None)
+    executed_tiers = [tier for tier in summary["tiers"] if tier["executed"]]
     gates["resource_metrics_collected"] = len(resource_tiers) == len(
-        summary["tiers"]
+        executed_tiers
     ) and all(
         resource["sample_count"] >= 3
         and resource["api_container"]["average_cpu_percent"] is not None
