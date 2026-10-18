@@ -65,6 +65,7 @@ def validate_capacity_v2_protocol(
         "warmup_requests_per_tier": warmup_requests_per_tier,
         "timeout_seconds": timeout_seconds,
         "sample_interval_seconds": sample_interval_seconds,
+        "verification_transport_retries": 1,
     }
     for name, actual in expected_runner.items():
         if runner.get(name) != actual:

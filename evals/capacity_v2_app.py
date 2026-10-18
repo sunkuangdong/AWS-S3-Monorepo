@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 os.environ["LANGFUSE_TRACING_ENABLED"] = "false"
 
@@ -19,7 +20,9 @@ from app.main import (
     lifespan,
     request_observability,
 )
-from fastapi import FastAPI
+from app.models.image_generation import ImageGeneration
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import select
 
 from evals.capacity_metrics import collect_capacity_metrics
 from evals.capacity_v2_protocol import (
@@ -52,6 +55,10 @@ vision_stub = DeterministicVisionStub(
 )
 image_generation_stub = DeterministicImageGenerationStub(
     delay_ms=_non_negative_delay("CAPACITY_V2_STUB_IMAGE_DELAY_MS", 250),
+)
+
+CAPACITY_V2_RUN_ID_PATTERN = re.compile(
+    r"^capacity-v2-\d{8}T\d{6}Z-[0-9a-f]{8}$"
 )
 
 app = FastAPI(
@@ -106,3 +113,39 @@ async def capacity_v2_test_metrics() -> dict[str, object]:
         engine,
         application_name="capacity-v2-api",
     )
+
+
+@app.get("/capacity-v2-test/records", include_in_schema=False)
+async def capacity_v2_test_records(run_id: str) -> dict[str, object]:
+    """Return privacy-safe, run-scoped PostgreSQL verification records."""
+    if CAPACITY_V2_RUN_ID_PATTERN.fullmatch(run_id) is None:
+        raise HTTPException(status_code=422, detail="invalid Capacity v2 run ID")
+
+    statement = (
+        select(
+            ImageGeneration.id,
+            ImageGeneration.status,
+            ImageGeneration.generation_type,
+            ImageGeneration.output_object_key.is_not(None).label("output_present"),
+        )
+        .where(
+            ImageGeneration.user_prompt.startswith(f"load-eval:{run_id}:"),
+            ImageGeneration.deleted_at.is_(None),
+        )
+        .order_by(ImageGeneration.id)
+    )
+    async with engine.connect() as connection:
+        rows = (await connection.execute(statement)).mappings().all()
+
+    return {
+        "run_id": run_id,
+        "records": [
+            {
+                "id": str(row["id"]),
+                "status": row["status"],
+                "generation_type": row["generation_type"],
+                "output_present": bool(row["output_present"]),
+            }
+            for row in rows
+        ],
+    }

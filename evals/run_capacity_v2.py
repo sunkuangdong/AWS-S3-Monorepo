@@ -32,8 +32,7 @@ from evals.run_load import (
     _call_delta,
     _git_value,
     _run_batch,
-    _scan_database_records,
-    _stub_calls_match,
+    _verify_generation,
     _write_json,
     parse_concurrencies,
     validate_local_base_url,
@@ -43,6 +42,83 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8003"
 DEFAULT_CONCURRENCIES = [64, 96, 128, 192, 256]
 STATUS_PATH = "/capacity-v2-test/status"
 METRICS_PATH = "/capacity-v2-test/metrics"
+RECORDS_PATH = "/capacity-v2-test/records"
+VERIFICATION_TRANSPORT_RETRIES = 1
+
+
+async def _retry_verification_transport_failures(
+    client: httpx.AsyncClient,
+    runs: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Retry only readback transport failures; never retry measured POSTs."""
+    candidates = [
+        run
+        for run in runs
+        if run.get("api_completed")
+        and run.get("generation_id")
+        and not run.get("database_verified")
+        and run.get("verification_error_type") not in {None, "DatabaseStateMismatch"}
+    ]
+    if not candidates:
+        return runs, {"attempted": 0, "recovered": 0}
+
+    semaphore = asyncio.Semaphore(min(16, len(candidates)))
+    retried = await asyncio.gather(
+        *[
+            _verify_generation(client, run, semaphore=semaphore)
+            for run in candidates
+        ]
+    )
+    replacements = {run["request_id"]: run for run in retried}
+    return [replacements.get(run["request_id"], run) for run in runs], {
+        "attempted": len(candidates),
+        "recovered": sum(bool(run["database_verified"]) for run in retried),
+    }
+
+
+def _capacity_v2_stub_calls_match(
+    delta: dict[str, dict[str, int]],
+    *,
+    expected_request_count: int,
+    verification_retry_attempts: int,
+) -> bool:
+    """Allow at most one extra presign call per verification retry."""
+    presign_calls = delta["storage"].get("create_presigned_download_url")
+    minimum_presign_calls = expected_request_count * 2
+    maximum_presign_calls = minimum_presign_calls + verification_retry_attempts
+    return (
+        delta["image_generation"] == {"generate_image": expected_request_count}
+        and delta["vision"] == {}
+        and delta["storage"].get("upload_generated_image")
+        == expected_request_count
+        and isinstance(presign_calls, int)
+        and minimum_presign_calls <= presign_calls <= maximum_presign_calls
+        and set(delta["storage"])
+        <= {"upload_generated_image", "create_presigned_download_url"}
+    )
+
+
+async def _scan_capacity_v2_records(
+    client: httpx.AsyncClient,
+    *,
+    run_id: str,
+) -> list[dict[str, Any]]:
+    """Read only this run's records without retaining prompts or object keys."""
+    response = await client.get(RECORDS_PATH, params={"run_id": run_id})
+    if response.status_code != 200:
+        raise LoadEvaluationError("Capacity v2 record scan returned non-200 status")
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise LoadEvaluationError(
+            "Capacity v2 record scan returned invalid JSON"
+        ) from error
+    records = payload.get("records") if isinstance(payload, dict) else None
+    if not isinstance(records, list) or not all(
+        isinstance(record, dict) for record in records
+    ):
+        raise LoadEvaluationError("Capacity v2 record scan returned invalid shape")
+    return records
 
 
 async def capacity_v2_preflight(client: httpx.AsyncClient) -> dict[str, Any]:
@@ -213,6 +289,7 @@ async def run(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
         tier_timings: list[dict[str, Any]] = []
         resource_tiers: list[dict[str, Any]] = []
         stopped_reason: str | None = None
+        verification_retries = {"attempted": 0, "recovered": 0}
         before_stubs = preflight["stubs"]
 
         for concurrency in concurrencies:
@@ -223,6 +300,12 @@ async def run(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
                 concurrency=concurrency,
                 request_count=args.warmup_requests,
             )
+            warmups, retry_result = await _retry_verification_transport_failures(
+                client,
+                warmups,
+            )
+            verification_retries["attempted"] += retry_result["attempted"]
+            verification_retries["recovered"] += retry_result["recovered"]
             all_runs.extend(warmups)
             if not all(
                 run["api_completed"] and run["database_verified"]
@@ -240,6 +323,12 @@ async def run(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
                 sample_interval_seconds=args.sample_interval_seconds,
                 metrics_path=METRICS_PATH,
             )
+            measured, retry_result = await _retry_verification_transport_failures(
+                client,
+                measured,
+            )
+            verification_retries["attempted"] += retry_result["attempted"]
+            verification_retries["recovered"] += retry_result["recovered"]
             all_runs.extend(measured)
             tier_timings.append(timing)
             resource_tiers.append(
@@ -265,11 +354,12 @@ async def run(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
         final_status = await _get_json(client, STATUS_PATH)
         after_stubs = _bounded_stub_snapshot(final_status)
         stub_delta = _call_delta(before_stubs, after_stubs)
-        stub_calls_match = _stub_calls_match(
+        stub_calls_match = _capacity_v2_stub_calls_match(
             stub_delta,
             expected_request_count=len(all_runs),
+            verification_retry_attempts=verification_retries["attempted"],
         )
-        database_records = await _scan_database_records(client, run_id=run_id)
+        database_records = await _scan_capacity_v2_records(client, run_id=run_id)
 
     load_summary = build_load_summary(
         runs=all_runs,
@@ -308,6 +398,7 @@ async def run(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
         "langfuse_tracing": False,
         "real_postgresql": True,
         "stub_call_delta": stub_delta,
+        "verification_transport_retries": verification_retries,
         "stub_delays_ms": manifest["stub_delays_ms"],
     }
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")

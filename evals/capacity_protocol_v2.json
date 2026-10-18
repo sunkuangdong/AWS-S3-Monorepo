@@ -18,7 +18,8 @@
     "requests_per_tier": 1000,
     "warmup_requests_per_tier": 64,
     "timeout_seconds": 30.0,
-    "sample_interval_seconds": 0.05
+    "sample_interval_seconds": 0.05,
+    "verification_transport_retries": 1
   },
   "workload": {
     "generation_type": "text_to_image",
@@ -26,7 +27,8 @@
     "height": 1024,
     "post_latency_scope": "POST /api/v1/images/generations only",
     "resource_window": "measured POST batch only",
-    "verification_scope": "API readback backed by real PostgreSQL after each batch"
+    "verification_scope": "API readback after each request plus privacy-safe run-scoped PostgreSQL verification",
+    "verification_retry_scope": "one retry for readback transport or JSON failures only; generation POSTs are never retried"
   },
   "stub_delays_ms": {
     "storage": 0,

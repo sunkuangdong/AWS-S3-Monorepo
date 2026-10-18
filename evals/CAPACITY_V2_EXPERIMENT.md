@@ -18,6 +18,10 @@ cannot overwrite frozen Capacity v1 evidence.
 - 64 warm-up and 1,000 measured requests per tier;
 - one Uvicorn worker;
 - real PostgreSQL with `application_name=capacity-v2-api`;
+- one retry for verification-read transport failures only; measured POSTs are
+  never retried;
+- final database validation uses a run-scoped, privacy-safe query instead of a
+  historical full-table scan;
 - deterministic 250 ms image-provider stub;
 - OpenAI, S3, and Langfuse disabled;
 - 50 ms resource-sampling interval;
