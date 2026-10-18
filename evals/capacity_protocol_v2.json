@@ -1,0 +1,73 @@
+{
+  "protocol_version": "2.0.0",
+  "status": "candidate",
+  "created_date": "2026-10-17",
+  "runner": {
+    "module": "evals.run_capacity_v2",
+    "application_module": "evals.capacity_v2_app:app",
+    "compose_profile": "capacity-v2",
+    "compose_service": "capacity-v2-api",
+    "uvicorn_workers": 1,
+    "concurrencies": [
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "requests_per_tier": 1000,
+    "warmup_requests_per_tier": 64,
+    "timeout_seconds": 30.0,
+    "sample_interval_seconds": 0.05
+  },
+  "workload": {
+    "generation_type": "text_to_image",
+    "width": 1024,
+    "height": 1024,
+    "post_latency_scope": "POST /api/v1/images/generations only",
+    "resource_window": "measured POST batch only",
+    "verification_scope": "API readback backed by real PostgreSQL after each batch"
+  },
+  "stub_delays_ms": {
+    "storage": 0,
+    "vision": 50,
+    "image_generation": 250
+  },
+  "safety": {
+    "cloud_calls_enabled": false,
+    "langfuse_tracing_enabled": false,
+    "real_postgresql_enabled": true,
+    "expected_cost_usd": 0.0,
+    "maximum_concurrency": 256,
+    "stop_tier_after_failure": true
+  },
+  "saturation_signals": {
+    "maximum_marginal_scaling_efficiency": 0.5,
+    "minimum_p95_latency_growth": 0.5,
+    "maximum_scaling_efficiency": 0.5
+  },
+  "metrics": {
+    "latency_percentiles": "nearest-rank",
+    "throughput_unit": "completed POST requests per second",
+    "baseline_concurrency": 64,
+    "resource_window": "measured POST batch only",
+    "fixed_performance_thresholds": false
+  },
+  "required_acceptance_gates": [
+    "preflight_passed",
+    "all_warmups_complete",
+    "all_requests_executed",
+    "all_api_requests_complete",
+    "no_server_errors",
+    "database_state_consistent",
+    "all_load_records_found",
+    "all_load_records_completed",
+    "no_unexpected_pending_records",
+    "stub_calls_match_workload",
+    "no_cloud_calls",
+    "run_was_not_stopped",
+    "resource_metrics_collected",
+    "monitoring_errors_absent",
+    "overall"
+  ]
+}

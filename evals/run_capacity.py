@@ -114,11 +114,12 @@ async def _sample_metrics(
     interval_seconds: float,
     samples: list[dict[str, Any]],
     errors: list[str],
+    metrics_path: str = "/capacity-test/metrics",
 ) -> None:
     while True:
         sampled_at = time.perf_counter()
         try:
-            payload = await _get_json(client, "/capacity-test/metrics")
+            payload = await _get_json(client, metrics_path)
             samples.append(
                 {
                     "sampled_at_monotonic": sampled_at,
@@ -144,6 +145,7 @@ async def _run_measured_batch(
     concurrency: int,
     request_count: int,
     sample_interval_seconds: float,
+    metrics_path: str = "/capacity-test/metrics",
 ) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]], list[str]]:
     semaphore = asyncio.Semaphore(concurrency)
     tracker = InFlightTracker()
@@ -157,6 +159,7 @@ async def _run_measured_batch(
             interval_seconds=sample_interval_seconds,
             samples=samples,
             errors=sample_errors,
+            metrics_path=metrics_path,
         )
     )
     await asyncio.sleep(0)

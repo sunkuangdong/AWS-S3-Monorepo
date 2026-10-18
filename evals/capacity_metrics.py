@@ -63,7 +63,11 @@ def read_cgroup_v2_metrics(root: Path = CGROUP_ROOT) -> dict[str, int | float | 
     }
 
 
-async def collect_capacity_metrics(engine: AsyncEngine) -> dict[str, Any]:
+async def collect_capacity_metrics(
+    engine: AsyncEngine,
+    *,
+    application_name: str = "capacity-api",
+) -> dict[str, Any]:
     """Combine container counters with run-scoped PostgreSQL connection state."""
     pool = engine.sync_engine.pool
     async with engine.connect() as connection:
@@ -82,9 +86,10 @@ async def collect_capacity_metrics(engine: AsyncEngine) -> dict[str, Any]:
                     ) AS idle_connections
                 FROM pg_stat_activity
                 WHERE datname = current_database()
-                  AND application_name = 'capacity-api'
+                  AND application_name = :application_name
                 """
-            )
+            ),
+            {"application_name": application_name},
         )
         row = result.mappings().one()
         checked_out = max(0, int(pool.checkedout()) - 1)
