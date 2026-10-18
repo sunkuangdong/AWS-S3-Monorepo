@@ -39,6 +39,23 @@ def require_environment_variable(name:str) -> str:
 
     return value.strip()
 
+
+def integer_environment_variable(
+    name: str,
+    default: int,
+    *,
+    minimum: int,
+) -> int:
+    """Read and validate a bounded integer environment setting."""
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as error:
+        raise RuntimeError(f"环境变量 {name} 必须是整数") from error
+    if value < minimum:
+        raise RuntimeError(f"环境变量 {name} 必须大于或等于 {minimum}")
+    return value
+
 @dataclass(frozen=True)
 class Settings:
     """
@@ -56,6 +73,9 @@ class Settings:
     openai_vision_model: str
     image_generation_model: str
     database_url: str
+    database_pool_size: int
+    database_max_overflow: int
+    database_pool_timeout_seconds: int
     presigned_url_expires: int
     max_upload_bytes: int
     frontend_origin: str
@@ -90,6 +110,21 @@ def get_settings() -> Settings:
         ),
         database_url=require_environment_variable(
             "DATABASE_URL"
+        ),
+        database_pool_size=integer_environment_variable(
+            "DATABASE_POOL_SIZE",
+            5,
+            minimum=1,
+        ),
+        database_max_overflow=integer_environment_variable(
+            "DATABASE_MAX_OVERFLOW",
+            10,
+            minimum=0,
+        ),
+        database_pool_timeout_seconds=integer_environment_variable(
+            "DATABASE_POOL_TIMEOUT_SECONDS",
+            30,
+            minimum=1,
         ),
         # 默认有效期为 10 分钟。
         # Default expiration time: 10 minutes.

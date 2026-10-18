@@ -1,0 +1,82 @@
+{
+  "protocol_version": "3.0.0",
+  "status": "candidate",
+  "created_date": "2026-10-17",
+  "hypothesis": "The default SQLAlchemy pool ceiling contributes to queueing at concurrency 96; increasing only the v3 evaluation service pool should improve throughput and tail latency without changing business logic.",
+  "runner": {
+    "module": "evals.run_capacity_v3",
+    "application_module": "evals.capacity_v3_app:app",
+    "compose_profile": "capacity-v3",
+    "compose_service": "capacity-v3-api",
+    "uvicorn_workers": 1,
+    "timeout_seconds": 30.0,
+    "sample_interval_seconds": 0.05,
+    "verification_transport_retries": 1,
+    "modes": {
+      "pilot": {
+        "concurrencies": [64, 96],
+        "requests_per_tier": 1000,
+        "warmup_requests_per_tier": 64
+      },
+      "full": {
+        "concurrencies": [64, 96, 128, 192, 256],
+        "requests_per_tier": 1000,
+        "warmup_requests_per_tier": 64
+      }
+    }
+  },
+  "optimization": {
+    "single_variable": "sqlalchemy_connection_pool_capacity",
+    "v2_database_pool_size": 5,
+    "v2_database_max_overflow": 10,
+    "v3_database_pool_size": 20,
+    "v3_database_max_overflow": 20,
+    "database_pool_timeout_seconds": 30,
+    "business_logic_changed": false,
+    "provider_stub_latency_changed": false,
+    "uvicorn_worker_count_changed": false
+  },
+  "workload": {
+    "generation_type": "text_to_image",
+    "width": 1024,
+    "height": 1024,
+    "post_latency_scope": "POST /api/v1/images/generations only",
+    "resource_window": "measured POST batch only",
+    "verification_scope": "API readback after each request plus privacy-safe run-scoped PostgreSQL verification"
+  },
+  "stub_delays_ms": {
+    "storage": 0,
+    "vision": 50,
+    "image_generation": 250
+  },
+  "safety": {
+    "cloud_calls_enabled": false,
+    "langfuse_tracing_enabled": false,
+    "real_postgresql_enabled": true,
+    "expected_cost_usd": 0.0,
+    "maximum_concurrency": 256,
+    "stop_tier_after_failure": true
+  },
+  "saturation_signals": {
+    "maximum_marginal_scaling_efficiency": 0.5,
+    "minimum_p95_latency_growth": 0.5,
+    "maximum_scaling_efficiency": 0.5
+  },
+  "required_acceptance_gates": [
+    "preflight_passed",
+    "all_warmups_complete",
+    "all_requests_executed",
+    "all_api_requests_complete",
+    "no_server_errors",
+    "database_state_consistent",
+    "all_load_records_found",
+    "all_load_records_completed",
+    "no_unexpected_pending_records",
+    "stub_calls_match_workload",
+    "no_cloud_calls",
+    "run_was_not_stopped",
+    "resource_metrics_collected",
+    "monitoring_errors_absent",
+    "overall"
+  ]
+}

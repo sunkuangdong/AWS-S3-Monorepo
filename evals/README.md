@@ -83,3 +83,9 @@ tracked evidence identifies concurrency 96 as the first reproducible saturation
 candidate and retains 64 as the highest fully reliable tested tier. See
 [`CAPACITY_V1_V2_COMPARISON.md`](CAPACITY_V1_V2_COMPARISON.md) for the bounded
 comparison and limitations.
+
+Candidate [`CAPACITY_V3_EXPERIMENT.md`](CAPACITY_V3_EXPERIMENT.md) isolates one
+optimization variable: the SQLAlchemy pool capacity of a dedicated one-worker
+service on port 8004. Its pilot repeats only concurrency 64 and 96 before any
+full five-tier validation, preserving the frozen Capacity v2 evidence as the
+comparison baseline.
