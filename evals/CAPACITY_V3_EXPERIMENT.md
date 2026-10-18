@@ -1,8 +1,24 @@
-# Capacity v3 Connection-Pool Optimization Experiment
+# Frozen Capacity v3 Connection-Pool Optimization Protocol
 
-Status: **CANDIDATE**
+Status: **FROZEN**
 
 Protocol version: `3.0.0`
+
+## Frozen identity
+
+- Frozen on: `2026-10-18`
+- Canonical Git tag: `capacity-eval-v3.0.0`
+- Measured implementation baseline: `e02511c91102d7138cc436e8d97c01de90d65b97`
+- Machine-readable manifest: `evals/capacity_protocol_v3.json`
+- Canonical aggregate evidence: `evals/evidence/capacity_v3_validation_summary.json`
+- Comparison report: `evals/CAPACITY_V2_V3_COMPARISON.md`
+- Source results: `20261018T210412Z`, `20261018T210607Z`, and
+  `20261018T210729Z`
+
+The tag is the canonical frozen source snapshot. The measured implementation
+baseline identifies the exact clean commit used by all three full validation
+runs. The freeze commit adds only reviewed aggregate evidence, documentation,
+identity checks, and frozen metadata.
 
 ## Hypothesis
 
@@ -55,6 +71,20 @@ docker compose --profile capacity-v3 up -d --build --wait capacity-v3-api
   --fail-on-gate
 ```
 
+## Run the frozen full protocol
+
+```bash
+docker compose --profile capacity-v3 up -d --build --wait capacity-v3-api
+
+.venv/bin/python -m evals.run_capacity_v3 \
+  --mode full \
+  --fail-on-gate
+```
+
+An overload failure produces a non-zero exit under `--fail-on-gate`; this is an
+observed capacity signal rather than an infrastructure failure when the service
+remains healthy and the run preserves its partial results.
+
 ## Decision rule
 
 Proceed to the full phase only when the pilot completes both tiers with 100%
@@ -101,9 +131,8 @@ them.
 
 The evidence supports a repeated correctness lower bound of 96, but 64 remains
 the recommended performance-safe tier because P95 still rises sharply at 96.
-The reviewed candidate aggregate is
-`evals/evidence/capacity_v3_validation_summary.json`. Freezing and tagging this
-result are reserved for step 10.
+The canonical frozen aggregate is
+`evals/evidence/capacity_v3_validation_summary.json`.
 
 ## Limits
 

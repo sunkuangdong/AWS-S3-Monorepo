@@ -215,8 +215,8 @@ def _render_report(summary: dict[str, Any], config: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "This candidate changes only connection-pool capacity. The pilot is",
-            "directional; durable improvement requires the full repeated v3 phase.",
+            "This frozen protocol changes only connection-pool capacity.",
+            "Its claims are bounded by the tracked repeated v3 evidence.",
             "",
         ]
     )

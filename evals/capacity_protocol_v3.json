@@ -1,6 +1,6 @@
 {
   "protocol_version": "3.0.0",
-  "status": "candidate",
+  "status": "frozen",
   "created_date": "2026-10-17",
   "hypothesis": "The default SQLAlchemy pool ceiling contributes to queueing at concurrency 96; increasing only the v3 evaluation service pool should improve throughput and tail latency without changing business logic.",
   "runner": {
@@ -78,5 +78,11 @@
     "resource_metrics_collected",
     "monitoring_errors_absent",
     "overall"
-  ]
+  ],
+  "freeze": {
+    "git_tag": "capacity-eval-v3.0.0",
+    "implementation_baseline_commit": "e02511c91102d7138cc436e8d97c01de90d65b97",
+    "evidence_path": "evals/evidence/capacity_v3_validation_summary.json",
+    "evidence_sha256": "1e3abdb016cc62637eb93e9c0c527e4903ca7e803b5c4d7b645f39cf636b7cd8"
+  }
 }

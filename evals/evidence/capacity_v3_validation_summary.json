@@ -1,10 +1,11 @@
 {
   "evidence_type": "privacy_safe_capacity_optimization_validation",
-  "validation_status": "complete_not_frozen",
+  "validation_status": "complete",
   "protocol_version": "3.0.0",
-  "protocol_status": "candidate",
+  "source_protocol_status": "candidate",
   "implementation_commit": "e02511c91102d7138cc436e8d97c01de90d65b97",
   "source_worktree_dirty": false,
+  "freeze_criteria_met": true,
   "single_variable_change": {
     "name": "sqlalchemy_connection_pool_capacity",
     "v2_pool_size": 5,

@@ -1,4 +1,4 @@
-"""Identity and drift checks for the candidate Capacity v3 optimization."""
+"""Identity and drift checks for the frozen Capacity v3 optimization."""
 
 from __future__ import annotations
 
@@ -6,10 +6,19 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evals.dataset import dataset_sha256
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CAPACITY_V3_MANIFEST = PROJECT_ROOT / "evals/capacity_protocol_v3.json"
 CAPACITY_V3_PROTOCOL_VERSION = "3.0.0"
-CAPACITY_V3_PROTOCOL_STATUS = "candidate"
+CAPACITY_V3_PROTOCOL_STATUS = "frozen"
+CAPACITY_V3_GIT_TAG = "capacity-eval-v3.0.0"
+CAPACITY_V3_IMPLEMENTATION_BASELINE_COMMIT = (
+    "e02511c91102d7138cc436e8d97c01de90d65b97"
+)
+CAPACITY_V3_EVIDENCE = (
+    PROJECT_ROOT / "evals/evidence/capacity_v3_validation_summary.json"
+)
 
 REQUIRED_ACCEPTANCE_GATES = (
     "preflight_passed",
@@ -31,6 +40,7 @@ REQUIRED_ACCEPTANCE_GATES = (
 
 
 def load_capacity_v3_manifest() -> dict[str, Any]:
+    """Load the tracked frozen Capacity v3 manifest."""
     return json.loads(CAPACITY_V3_MANIFEST.read_text(encoding="utf-8"))
 
 
@@ -44,14 +54,14 @@ def validate_capacity_v3_protocol(
     sample_interval_seconds: float,
     preflight_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Reject identity, workload, optimization, or safety drift."""
+    """Reject frozen identity, workload, evidence, or safety drift."""
     manifest = load_capacity_v3_manifest()
     errors: list[str] = []
 
     if manifest.get("protocol_version") != CAPACITY_V3_PROTOCOL_VERSION:
         errors.append("Capacity v3 manifest version does not match the runner")
     if manifest.get("status") != CAPACITY_V3_PROTOCOL_STATUS:
-        errors.append("Capacity v3 must remain candidate until full validation")
+        errors.append("Capacity v3 manifest status does not match the runner")
 
     runner = manifest.get("runner", {})
     expected_identity = {
@@ -110,6 +120,56 @@ def validate_capacity_v3_protocol(
         REQUIRED_ACCEPTANCE_GATES
     ):
         errors.append("Capacity v3 acceptance gates do not match")
+
+    freeze = manifest.get("freeze", {})
+    if freeze.get("git_tag") != CAPACITY_V3_GIT_TAG:
+        errors.append("Git tag does not match frozen Capacity v3")
+    if (
+        freeze.get("implementation_baseline_commit")
+        != CAPACITY_V3_IMPLEMENTATION_BASELINE_COMMIT
+    ):
+        errors.append("implementation baseline does not match Capacity v3")
+    expected_evidence_path = str(CAPACITY_V3_EVIDENCE.relative_to(PROJECT_ROOT))
+    if freeze.get("evidence_path") != expected_evidence_path:
+        errors.append("evidence path does not match frozen Capacity v3")
+    if not CAPACITY_V3_EVIDENCE.is_file():
+        errors.append("frozen aggregate Capacity v3 evidence is missing")
+    elif dataset_sha256(CAPACITY_V3_EVIDENCE) != freeze.get("evidence_sha256"):
+        errors.append("aggregate Capacity v3 evidence SHA-256 does not match")
+    else:
+        evidence = json.loads(CAPACITY_V3_EVIDENCE.read_text(encoding="utf-8"))
+        aggregate = evidence.get("aggregate", {})
+        conclusion = evidence.get("conclusion", {})
+        privacy = evidence.get("privacy", {})
+        if evidence.get("protocol_version") != CAPACITY_V3_PROTOCOL_VERSION:
+            errors.append("aggregate Capacity v3 evidence version does not match")
+        if (
+            evidence.get("implementation_commit")
+            != CAPACITY_V3_IMPLEMENTATION_BASELINE_COMMIT
+        ):
+            errors.append("aggregate Capacity v3 evidence baseline does not match")
+        if evidence.get("source_worktree_dirty") is not False:
+            errors.append("aggregate Capacity v3 evidence must use a clean worktree")
+        if evidence.get("freeze_criteria_met") is not True:
+            errors.append("aggregate Capacity v3 freeze criteria were not met")
+        if aggregate.get("run_count") != 3:
+            errors.append("aggregate Capacity v3 run count does not match")
+        if aggregate.get(
+            "all_runs_identified_concurrency_96_as_first_performance_candidate"
+        ) is not True:
+            errors.append("aggregate Capacity v3 performance knee is incomplete")
+        if aggregate.get("all_concurrency_64_and_96_requests_succeeded") is not True:
+            errors.append("aggregate Capacity v3 reliable tiers are incomplete")
+        if aggregate.get("request_failures_reproduced_at_concurrency_128") is not True:
+            errors.append("aggregate Capacity v3 failure boundary is incomplete")
+        if conclusion.get("highest_repeated_fully_reliable_tier") != 96:
+            errors.append("aggregate Capacity v3 correctness lower bound differs")
+        if conclusion.get("recommended_performance_safe_tier") != 64:
+            errors.append("aggregate Capacity v3 performance-safe tier differs")
+        if privacy.get("artifact_scan") != "clean" or privacy.get(
+            "raw_results_tracked"
+        ) is not False:
+            errors.append("aggregate Capacity v3 privacy evidence is incomplete")
 
     if preflight_result is not None:
         if preflight_result.get("cloud_calls_enabled") is not False:

@@ -2,7 +2,12 @@ from typing import Any
 
 import httpx
 import pytest
-from evals.capacity_v3_protocol import validate_capacity_v3_protocol
+from evals.capacity_v3_protocol import (
+    CAPACITY_V3_IMPLEMENTATION_BASELINE_COMMIT,
+    CAPACITY_V3_PROTOCOL_STATUS,
+    CAPACITY_V3_PROTOCOL_VERSION,
+    validate_capacity_v3_protocol,
+)
 from evals.run_capacity_v3 import capacity_v3_preflight
 
 from app.core.config import integer_environment_variable
@@ -13,7 +18,7 @@ def _status() -> dict[str, Any]:
     return {
         "capacity_v3_test": True,
         "protocol_version": "3.0.0",
-        "protocol_status": "candidate",
+        "protocol_status": "frozen",
         "cloud_calls_enabled": False,
         "langfuse_tracing_enabled": False,
         "real_postgresql_enabled": True,
@@ -92,6 +97,18 @@ async def test_capacity_v3_preflight_proves_single_variable_pool_change() -> Non
     assert manifest["optimization"]["single_variable"] == (
         "sqlalchemy_connection_pool_capacity"
     )
+    assert manifest["protocol_version"] == CAPACITY_V3_PROTOCOL_VERSION == "3.0.0"
+    assert manifest["status"] == CAPACITY_V3_PROTOCOL_STATUS == "frozen"
+    assert manifest["freeze"] == {
+        "git_tag": "capacity-eval-v3.0.0",
+        "implementation_baseline_commit": (
+            CAPACITY_V3_IMPLEMENTATION_BASELINE_COMMIT
+        ),
+        "evidence_path": "evals/evidence/capacity_v3_validation_summary.json",
+        "evidence_sha256": (
+            "1e3abdb016cc62637eb93e9c0c527e4903ca7e803b5c4d7b645f39cf636b7cd8"
+        ),
+    }
 
 
 def test_capacity_v3_protocol_locks_pilot_and_full_modes() -> None:
