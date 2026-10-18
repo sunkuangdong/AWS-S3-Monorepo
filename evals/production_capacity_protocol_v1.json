@@ -1,0 +1,34 @@
+{
+  "protocol_version": "1.0.0-draft",
+  "status": "draft",
+  "runner": "evals.run_production_capacity",
+  "dataset": {
+    "path": "evals/datasets/production_capacity_v1.jsonl",
+    "sha256": "e7f4f2a4e1c57cbda601d4751acd1b146168b171fb18fa2333299363850b247b",
+    "case_count": 2,
+    "case_ids": [
+      "production-capacity-001",
+      "production-capacity-002"
+    ]
+  },
+  "hard_safety_limits": {
+    "maximum_request_count": 50,
+    "maximum_in_flight": 10,
+    "maximum_duration_seconds": 7200,
+    "maximum_cost_usd": 10.0,
+    "maximum_reserved_cost_per_request_usd": 0.25
+  },
+  "required_manual_confirmations": [
+    "confirm_cloud_spend",
+    "confirm_production_capacity_test",
+    "confirm_isolated_test_data"
+  ],
+  "required_integrations": [
+    "postgresql",
+    "s3",
+    "openai",
+    "langfuse",
+    "resource_metrics"
+  ],
+  "interpretation": "Open-arrival-rate real-dependency test. Results are deployment- and window-specific, not universal production capacity."
+}

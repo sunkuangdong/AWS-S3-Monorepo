@@ -95,7 +95,10 @@ recommended performance-safe local tier remains **concurrency 64**.
 Read the [project-level evaluation report](evals/FINAL_EVALUATION_REPORT.md)
 for metric definitions, failure boundaries, provenance, cost scope, and claim
 limitations. The [v2/v3 controlled comparison](evals/CAPACITY_V2_V3_COMPARISON.md)
-contains the optimization analysis.
+contains the optimization analysis. The
+[manual verification guide](evals/MANUAL_VERIFICATION_GUIDE.md) maps each
+headline number to evidence and gives free, offline, capacity, and paid test
+procedures with expected results.
 
 ## Quick start with Docker
 
@@ -334,3 +337,8 @@ Langfuse already has managed pricing for `gpt-4.1-mini`. The project image model
 - Capacity runs are burst experiments rather than long-duration soak tests;
   multi-worker, multi-host, autoscaling, and connection-aging behavior remain
   outside the measured scope.
+
+For a real-dependency, deployment-specific capacity test, review the draft
+[`Production Capacity Protocol`](evals/PRODUCTION_CAPACITY_PROTOCOL.md). Its
+runner requires explicit target, isolation, and cloud-spend confirmations and
+will not convert the existing local Stub numbers into production claims.

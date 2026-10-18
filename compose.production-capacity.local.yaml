@@ -1,0 +1,60 @@
+name: ai-image-production-capacity-local
+
+# Local isolation rehearsal only. This stack proves that capacity-test data and
+# credentials are separated from the normal development stack. It does not
+# reproduce production compute, networking, autoscaling, or provider capacity.
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ai_image_capacity
+      POSTGRES_USER: ai_image_capacity
+      POSTGRES_PASSWORD: ai_image_capacity_local
+    volumes:
+      - capacity-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ai_image_capacity -d ai_image_capacity",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    # Explicit bounds make the cgroup CPU and memory denominators observable.
+    # They are local rehearsal limits, not a production-capacity claim.
+    cpus: 2.0
+    mem_limit: 2g
+    env_file:
+      - apps/api/.env.capacity
+    environment:
+      DATABASE_URL: postgresql+psycopg://ai_image_capacity:ai_image_capacity_local@database:5432/ai_image_capacity?application_name=production-capacity-local
+      FRONTEND_ORIGIN: http://localhost:5273
+      LANGFUSE_TRACING_ENABLED: "true"
+      LANGFUSE_ENVIRONMENT: production-capacity-local
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8100:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/database')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  capacity-postgres-data:

@@ -4,7 +4,16 @@ The evaluation harness executes the real `ImageService` orchestration against de
 
 The consolidated results, cost boundary, failure boundary, provenance, and
 limitations across Workflow Smoke, Live Smoke, Load v1, and Capacity v1-v3 are
-published in [`FINAL_EVALUATION_REPORT.md`](FINAL_EVALUATION_REPORT.md).
+published in [`FINAL_EVALUATION_REPORT.md`](FINAL_EVALUATION_REPORT.md). Use
+[`MANUAL_VERIFICATION_GUIDE.md`](MANUAL_VERIFICATION_GUIDE.md) to trace each
+headline metric to evidence and reproduce the free, offline, capacity, or paid
+test layer safely.
+
+Draft [`PRODUCTION_CAPACITY_PROTOCOL.md`](PRODUCTION_CAPACITY_PROTOCOL.md)
+defines a separate, explicitly authorized real-dependency capacity runner with
+open arrival rates, budget reservation, resource cutoffs, PostgreSQL/S3 state
+checks, Langfuse cost verification, and privacy-safe evidence. It must not be
+confused with the frozen local Stub capacity results.
 
 Protocol `1.0.0` is frozen at Git tag `workflow-eval-v1.0.0`. Its tracked manifest locks the 12 reviewed cases and dataset SHA-256. Changes to labels or gates require a new protocol version.
 

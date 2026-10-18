@@ -1,4 +1,6 @@
+import hmac
 import logging
+import os
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -6,6 +8,7 @@ from uuid import uuid4
 
 from fastapi import (
     FastAPI,
+    Header,
     HTTPException,
     Request,
     status,
@@ -17,9 +20,11 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.langfuse_observability import flush_langfuse
 from app.core.observability import configure_logging
+from app.core.production_metrics import collect_production_metrics
 from app.db.session import (
     check_database_connection,
     dispose_database_engine,
+    engine,
 )
 
 configure_logging()
@@ -148,6 +153,30 @@ async def database_health_check() -> dict[str, str]:
         "status": "ok",
         "database": "reachable",
     }
+
+
+@app.get(
+    "/internal/capacity-metrics",
+    response_model=dict[str, float],
+    tags=["internal"],
+    include_in_schema=False,
+)
+async def production_capacity_metrics(
+    authorization: str | None = Header(default=None),
+) -> dict[str, float]:
+    """Expose a bounded resource snapshot only when explicitly enabled."""
+    expected = os.getenv("CAPACITY_METRICS_AUTHORIZATION", "").strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if authorization is None or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    try:
+        return await collect_production_metrics(engine)
+    except (RuntimeError, SQLAlchemyError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="capacity metrics are unavailable",
+        ) from error
 
 
 
