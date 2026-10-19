@@ -24,6 +24,11 @@ separation. Its dedicated Compose project, database volume, and port prevent
 accidental writes to the normal local stack, but local Docker is not a
 production-equivalent capacity target.
 
+`infra/production-capacity/` defines the isolated AWS HTTPS/ECS/RDS target as
+reviewable Terraform. Its initial plan keeps the ECS desired count at zero;
+the operator must populate secrets, push the reviewed image, and complete the
+one-off migration before enabling any API task.
+
 ## What the runner automates
 
 `evals.run_production_capacity`:

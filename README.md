@@ -4,7 +4,10 @@ English | [简体中文](README.zh-CN.md)
 
 A full-stack AI image creation project organized as a monorepo. It supports text-to-image generation and reference-image editing, with PostgreSQL tracking task state, private Amazon S3 storage, and OpenAI vision and image-generation models.
 
-This release is an engineering-focused, demo-ready MVP with automated tests, CI, containers, database migrations, health checks, and structured request logs.
+This release is an engineering-focused, demo-ready MVP with automated tests,
+CI, containers, database migrations, health checks, and structured request
+logs. Its throughput and capacity figures come from controlled local
+benchmarks, not production traffic.
 
 ## Engineering highlights
 
@@ -77,16 +80,22 @@ The repository includes a layered evaluation program rather than a single
 happy-path demo. Workflow and load tests use deterministic substitutes; Live
 Smoke alone calls the real paid services.
 
+> **Claim boundary:** Load and Capacity results measure one local Uvicorn
+> worker with real PostgreSQL and a deterministic 250 ms provider stub. They
+> are reproducible engineering benchmarks, not OpenAI/S3 production capacity
+> or production SLOs. Live Smoke verifies the real integration chain, but its
+> four cases are too few to support availability or latency-percentile claims.
+
 | Evaluation | Workload | Result | Latency / throughput | Cost | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | Workflow Smoke v1 | 12 reviewed normal, validation, database, and provider-failure scenarios | 100% scenario expectations and terminal-state consistency; 0 orphan outputs | 100.380 ms P95 harness latency | $0 | [JSON](evals/evidence/workflow_v1_summary.json) |
-| Live Smoke v1 | 4 real PostgreSQL/S3/OpenAI/Langfuse workflows | 4/4 API, database, S3, trace, privacy, and cost checks passed | 32.235 s P50; 72.524 s P95 | $0.1404404 | [JSON](evals/evidence/live_smoke_v1_summary.json) |
+| Live Smoke v1 | 4 real PostgreSQL/S3/OpenAI/Langfuse workflows | 4/4 API, database, S3, trace, privacy, and cost checks passed | Not used for a latency claim (`n=4`) | $0.1404404 | [JSON](evals/evidence/live_smoke_v1_summary.json) |
 | Load v1 | 160 measured requests through c16 | 100% API and database consistency | 42.144 RPS; 346.008 ms P95 at c16 | $0 | [JSON](evals/evidence/load_v1_summary.json) |
 | Capacity v1 | 1,200 measured requests through c64 | 100% success; no saturation observed within the tested range | 165.047 RPS; 511.634 ms P95 at c64 | $0 | [JSON](evals/evidence/capacity_v1_summary.json) |
 | Capacity v2 | Three repeated breakpoint runs | c96 was the first repeatable performance knee; request failures in 2/3 runs | 70.147 RPS median; 4,352.453 ms median P95 at c96 | $0 | [JSON](evals/evidence/capacity_v2_summary.json) |
 | Capacity v3 | Three validation runs; 11,000 measured requests | c64/c96: 100%; first reproduced request-failure tier: c128 | 80.569 RPS median; 3,375.503 ms median P95 at c96 | $0 | [JSON](evals/evidence/capacity_v3_validation_summary.json) |
 
-Capacity v3 changed only the isolated evaluation service's SQLAlchemy pool
+Capacity v3 changed only the controlled evaluation service's SQLAlchemy pool
 from `5 + 10` to `20 + 20`. At concurrency 96, fully successful runs improved
 from **1/3 to 3/3**, median throughput increased **14.9%**, and median P95
 latency decreased **22.4%**. The performance knee remained at 96, so the
@@ -338,7 +347,12 @@ Langfuse already has managed pricing for `gpt-4.1-mini`. The project image model
   multi-worker, multi-host, autoscaling, and connection-aging behavior remain
   outside the measured scope.
 
-For a real-dependency, deployment-specific capacity test, review the draft
-[`Production Capacity Protocol`](evals/PRODUCTION_CAPACITY_PROTOCOL.md). Its
-runner requires explicit target, isolation, and cloud-spend confirmations and
-will not convert the existing local Stub numbers into production claims.
+## Optional infrastructure design
+
+[`infra/production-capacity`](infra/production-capacity/README.md) contains a
+reviewable Terraform design for an isolated HTTPS/ECS/RDS capacity-test
+environment. It is an unexecuted extension, is disabled with zero API tasks by
+default, and is not part of the measured evidence above. The draft
+[`Production Capacity Protocol`](evals/PRODUCTION_CAPACITY_PROTOCOL.md) keeps
+any future real-dependency experiment separate from the frozen local results;
+it cannot be used to relabel those results as production capacity.

@@ -1,0 +1,48 @@
+# Copy to terraform.tfvars. This example contains no credentials.
+aws_region      = "us-east-1"
+project_name    = "ai-image"
+environment_name = "capacity"
+
+# Use only the public IPv4 /32 addresses of approved operators/load generators.
+allowed_ingress_cidrs = ["203.0.113.10/32"]
+
+# The hostname must belong to this existing Route53 public hosted zone.
+api_domain_name = "capacity-api.example.com"
+route53_zone_id = "Z0123456789EXAMPLE"
+
+# Existing isolated bucket; Terraform deliberately does not own or delete it.
+s3_bucket_name = "replace-with-isolated-capacity-bucket"
+
+# Build and push this exact reviewed commit as linux/amd64.
+image_tag = "e5ceaaf"
+
+# Match the reviewed application configuration.
+vision_model           = "replace-with-reviewed-vision-model"
+image_generation_model = "replace-with-reviewed-image-model"
+frontend_origin        = "https://capacity-ui.example.com"
+
+langfuse_base_url   = "https://us.cloud.langfuse.com"
+langfuse_environment = "production-capacity-isolated"
+
+# Safety default: the first apply creates infrastructure but launches no API.
+# Change to 1 for the first remote preflight, and only then review a 2-task run.
+service_desired_count = 0
+
+# Every reported result must record these fixed capacity inputs.
+task_cpu                         = 2048
+task_memory                      = 4096
+database_instance_class         = "db.t4g.medium"
+database_engine_version         = "17"
+database_allocated_storage_gib  = 20
+database_pool_size              = 20
+database_max_overflow           = 20
+database_pool_timeout_seconds   = 30
+
+# Temporary synthetic environment defaults. Review before destroy/apply.
+deletion_protection = false
+skip_final_snapshot = true
+
+extra_tags = {
+  Owner      = "replace-with-owner"
+  CostCenter = "capacity-evaluation"
+}
